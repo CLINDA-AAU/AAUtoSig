@@ -27,6 +27,9 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0).transpose()
 
+#mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
+
+
 x_train = mc.sample(frac=0.8)
 x_test = mc.drop(x_train.index)
 
@@ -73,8 +76,8 @@ class NMFAE(torch.nn.Module):
     #    return decoded
 
     def forward(self, x):
-        x = F.relu(self.enc1(x))
-        x = F.relu(self.dec1(x))
+        x = self.enc1(x)
+        x = self.dec1(x)
         return x
 
 
@@ -82,18 +85,18 @@ class NMFAE(torch.nn.Module):
 model = NMFAE(dim = 7)
   
 # Validation using MSE Loss function
-loss_function = torch.nn.MSELoss(reduction='mean')
-#loss_function = torch.nn.KLDivLoss()
+#loss_function = torch.nn.MSELoss(reduction='mean')
+loss_function = torch.nn.KLDivLoss()
 
   #
 # Using an Adam Optimizer with lr = 0.1
 optimizer = torch.optim.Adam(model.parameters(),
-                             lr = 1e-1,
+                             lr = 1e-3,
                              weight_decay = 1e-8)
 
 
 #Train
-epochs = 100
+epochs = 10000
 outputs = []
 
 training_plot=[]
@@ -148,19 +151,19 @@ for epoch in range(epochs):
 
         
  #Patient early stopping - thanks to Elixir  
-    #if last_score > valid_loss:
-    #    last_score = valid_loss
-    #    best_epoch = epoch
-    #    es_rounds = max_es_rounds
-    #    best_model = copy.deepcopy(model)
-    #else:
-    #    if es_rounds > 0:
-    #        es_rounds -=1
-    #    else:
-    #        print('EARLY-STOPPING !')
-    #        print('Best epoch found: nº {}'.format(best_epoch))
-    #        print('Exiting. . .')
-    #        break
+    if last_score > valid_loss:
+        last_score = valid_loss
+        best_epoch = epoch
+        es_rounds = max_es_rounds
+        best_model = copy.deepcopy(model)
+    else:
+        if es_rounds > 0:
+            es_rounds -=1
+        else:
+            print('EARLY-STOPPING !')
+            print('Best epoch found: nº {}'.format(best_epoch))
+            print('Exiting. . .')
+            break
 
 
 plt.figure(figsize=(16,12))
