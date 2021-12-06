@@ -8,7 +8,9 @@ Created on Wed Dec  1 08:40:05 2021
 
 import torch
 from torchvision import transforms
+from torchvision.models.feature_extraction import get_graph_node_names
 import torch.nn.functional as F
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -25,10 +27,11 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 #mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0)#.transpose()
 
 
-mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0).transpose()
+#mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0).transpose()
 
-#mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
-
+#mc = pd.read_csv('data/WGS_PCAWG.96.csv', index_col=0, d).transpose()
+mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
+#mc = mc.iloc[1:,:]
 
 x_train = mc.sample(frac=0.8)
 x_test = mc.drop(x_train.index)
@@ -76,17 +79,32 @@ class NMFAE(torch.nn.Module):
     #    return decoded
 
     def forward(self, x):
-        x = self.enc1(x)
-        x = self.dec1(x)
-        return x
+        encoded = self.enc1(x)
+        decoded = self.dec1(encoded)
+        return decoded
 
+
+class WeightClipper(object):
+
+    def __init__(self):
+        pass
+
+    def __call__(self, module):
+        print("Entered")
+        # filter the variables to get the ones you want
+        if hasattr(module, 'weight'):
+            w = module.weight.data
+            w = w.clamp(0,1)
+            module.weight.data = w
 
 # Model Initialization
 model = NMFAE(dim = 7)
+clipper = WeightClipper()
+model.apply(clipper)
   
 # Validation using MSE Loss function
-#loss_function = torch.nn.MSELoss(reduction='mean')
-loss_function = torch.nn.KLDivLoss()
+loss_function = torch.nn.MSELoss(reduction='mean')
+#loss_function = torch.nn.KLDivLoss()
 
   #
 # Using an Adam Optimizer with lr = 0.1
@@ -96,14 +114,14 @@ optimizer = torch.optim.Adam(model.parameters(),
 
 
 #Train
-epochs = 10000
+epochs = 500
 outputs = []
 
 training_plot=[]
 validation_plot=[]
 
 last_score=np.inf
-max_es_rounds = 5
+max_es_rounds = 10
 es_rounds = max_es_rounds
 best_epoch= 0
 
@@ -123,6 +141,7 @@ for epoch in range(epochs):
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
+      #model.dec1.weight=torch.nn.Parameter(constraintLow + (constraintHigh-constraintLow)*(model.l1.weight - torch.min(model.l1.weight))/(torch.max(model.l1.weight) - torch.min(model.l1.weight)))
       W = model.dec1.weight.data
      # print statistics
     with torch.no_grad():
@@ -151,7 +170,7 @@ for epoch in range(epochs):
 
         
  #Patient early stopping - thanks to Elixir  
-    if last_score > valid_loss:
+    if last_score > valid_loss - 1e-2:
         last_score = valid_loss
         best_epoch = epoch
         es_rounds = max_es_rounds
@@ -177,7 +196,15 @@ plt.legend()
 
 for i in range(7):
     plt.figure(figsize=(16,12))
-    plt.bar(mc.columns, W[:,i]/torch.sum(W[:,i]))
+    plt.bar(mc.columns, W[:,i])#/torch.sum(W[:,i]))
+
+
+H  = torch.matmul(x_train_tensor, W)
+
+
+for i in range(5):
+    plt.figure(figsize=(16,12))
+    plt.bar(range(7), H[i,:])
 
 
 '''
