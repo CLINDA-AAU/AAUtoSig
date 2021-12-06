@@ -79,12 +79,12 @@ class NMFAE(torch.nn.Module):
     #    return decoded
 
     def forward(self, x):
-        encoded = self.enc1(x)
-        decoded = self.dec1(encoded)
-        return decoded
+        x = self.enc1(x)
+        x = self.dec1(x)
+        return x
 
 
-class WeightClipper(object):
+class WeightConstraint(object):
 
     def __init__(self):
         pass
@@ -94,13 +94,13 @@ class WeightClipper(object):
         # filter the variables to get the ones you want
         if hasattr(module, 'weight'):
             w = module.weight.data
-            w = w.clamp(0,1)
+            w = w.clamp(min = 0)
             module.weight.data = w
 
 # Model Initialization
 model = NMFAE(dim = 7)
-clipper = WeightClipper()
-model.apply(clipper)
+clipper = WeightConstraint()
+model._modules['dec1'].apply(clipper)
   
 # Validation using MSE Loss function
 loss_function = torch.nn.MSELoss(reduction='mean')
