@@ -40,9 +40,6 @@ x_test = mc.drop(x_train.index)
 x_train_tensor = torch.tensor(x_train.values, dtype = torch.float32)
 x_test_tensor = torch.tensor(x_test.values, dtype = torch.float32)
 
-
-#det går nok galt fordi det ikke er en tensor
-
 #mc_tensor = torch.tensor(mc.values, dtype = torch.float32)
 trainloader = torch.utils.data.DataLoader(x_train_tensor, batch_size=8, shuffle=True)
 testloader = torch.utils.data.DataLoader(x_test_tensor, batch_size=8)
@@ -84,25 +81,9 @@ class NMFAE(torch.nn.Module):
         x = self.dec1(x)
         return x
 
-
-class WeightConstraint(object):
-
-    def __init__(self):
-        pass
-
-    def __call__(self, module):
-        print("Entered")
-        # filter the variables to get the ones you want
-        if hasattr(module, 'weight'):
-            w = module.weight.data
-            w = w.clamp(min = 0)
-            module.weight.data = w
-
 # Model Initialization
 model = NMFAE(dim = 7)
-clipper = WeightConstraint()
-model._modules['dec1'].apply(clipper)
-  
+
 # Validation using MSE Loss function
 loss_function = torch.nn.MSELoss(reduction='mean')
 #loss_function = torch.nn.KLDivLoss()
@@ -126,7 +107,7 @@ last_score=np.inf
 max_es_rounds = 10
 es_rounds = max_es_rounds
 best_epoch= 0
-l1_lambda = 0.001
+#l1_lambda = 0.001
 
 for epoch in range(epochs):
     model.train()
@@ -138,24 +119,17 @@ for epoch in range(epochs):
       # Calculating the loss function
       loss = loss_function(reconstructed, data.view(-1,96))
       
-      #Adding l1 constraint for spasity because this will may reduce the cross-
-      #cancellation that leads to negative weights
-     
-      l1_norm = sum(p.abs().sum()
-                    for p in model.parameters())
-     
-      loss = loss + l1_lambda * l1_norm
-            
       # The gradients are set to zero,
       # the the gradient is computed and stored.
       # .step() performs parameter update
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
-      #model.dec1.weight=torch.nn.Parameter(constraintLow + (constraintHigh-constraintLow)*(model.l1.weight - torch.min(model.l1.weight))/(torch.max(model.l1.weight) - torch.min(model.l1.weight)))
       W = model.dec1.weight.data
     # print statistics
     with torch.no_grad():
+        for param in model.parameters():
+            param.clamp_(min = 0)
         valid_loss=0
         train_loss=0
         model.eval()
