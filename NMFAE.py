@@ -18,6 +18,7 @@ import csv
 
 import copy
 
+#because plots broke the kernel
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
@@ -106,11 +107,12 @@ model._modules['dec1'].apply(clipper)
 loss_function = torch.nn.MSELoss(reduction='mean')
 #loss_function = torch.nn.KLDivLoss()
 
-  #
+
 # Using an Adam Optimizer with lr = 0.1
+# remove weight decay (l2 penalty) because i added l1 penalty in training
 optimizer = torch.optim.Adam(model.parameters(),
-                             lr = 1e-3,
-                             weight_decay = 1e-8)
+                             lr = 1e-3)#,
+                             #weight_decay = 1e-8)
 
 
 #Train
@@ -124,6 +126,7 @@ last_score=np.inf
 max_es_rounds = 10
 es_rounds = max_es_rounds
 best_epoch= 0
+l1_lambda = 0.001
 
 for epoch in range(epochs):
     model.train()
@@ -134,7 +137,15 @@ for epoch in range(epochs):
         
       # Calculating the loss function
       loss = loss_function(reconstructed, data.view(-1,96))
-        
+      
+      #Adding l1 constraint for spasity because this will may reduce the cross-
+      #cancellation that leads to negative weights
+     
+      l1_norm = sum(p.abs().sum()
+                    for p in model.parameters())
+     
+      loss = loss + l1_lambda * l1_norm
+            
       # The gradients are set to zero,
       # the the gradient is computed and stored.
       # .step() performs parameter update
@@ -143,7 +154,7 @@ for epoch in range(epochs):
       optimizer.step()
       #model.dec1.weight=torch.nn.Parameter(constraintLow + (constraintHigh-constraintLow)*(model.l1.weight - torch.min(model.l1.weight))/(torch.max(model.l1.weight) - torch.min(model.l1.weight)))
       W = model.dec1.weight.data
-     # print statistics
+    # print statistics
     with torch.no_grad():
         valid_loss=0
         train_loss=0
