@@ -32,7 +32,8 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 #mc = pd.read_csv('data/WGS_PCAWG.96.csv', index_col=0, d).transpose()
 mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
-#mc = mc.iloc[1:,:]
+context = mc.columns
+mutation = [s[2:5] for s in context]
 
 x_train = mc.sample(frac=0.8)
 x_test = mc.drop(x_train.index)
@@ -82,7 +83,8 @@ class NMFAE(torch.nn.Module):
         return x
 
 # Model Initialization
-model = NMFAE(dim = 7)
+n_sigs = 7
+model = NMFAE(dim = n_sigs)
 
 # Validation using MSE Loss function
 loss_function = torch.nn.MSELoss(reduction='mean')
@@ -107,7 +109,7 @@ last_score=np.inf
 max_es_rounds = 10
 es_rounds = max_es_rounds
 best_epoch= 0
-#l1_lambda = 0.001
+l1_lambda = 0.001
 
 for epoch in range(epochs):
     model.train()
@@ -119,6 +121,11 @@ for epoch in range(epochs):
       # Calculating the loss function
       loss = loss_function(reconstructed, data.view(-1,96))
       
+      # l1_norm = sum(p.abs().sum()
+      #            for p in model.parameters())
+ 
+      # loss = loss + l1_lambda * l1_norm
+      
       # The gradients are set to zero,
       # the the gradient is computed and stored.
       # .step() performs parameter update
@@ -128,8 +135,8 @@ for epoch in range(epochs):
       W = model.dec1.weight.data
     # print statistics
     with torch.no_grad():
-        for param in model.parameters():
-            param.clamp_(min = 0)
+        for p in model.parameters():
+            p.clamp_(min = 0)
         valid_loss=0
         train_loss=0
         model.eval()
@@ -179,17 +186,32 @@ plt.plot(list(range(len(training_plot))), training_plot, label='Train DKL')
 plt.legend()
 
 
-for i in range(7):
-    plt.figure(figsize=(16,12))
-    plt.bar(mc.columns, W[:,i])#/torch.sum(W[:,i]))
+def plotsigs(context, mutation, intensities):
+    colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
+              'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
+    plt.figure(figsize=(20,10))
+    plt.bar(x = context, 
+            height =  intensities/np.sum(intensities), 
+            color = [colors[i] for i in mutation])
+    labels = list(colors.keys())
+    handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+    plt.legend(handles,labels)
+    plt.xticks(rotation=90)
+    
+W_array = W.numpy()
 
 
-H  = torch.matmul(x_train_tensor, W)
+for i in range(n_sigs):
+    plotsigs(context, mutation, W_array[:,i])
+
+
+H  = np.matmul(x_train, W_array).to_numpy()
 
 
 for i in range(5):
     plt.figure(figsize=(16,12))
-    plt.bar(range(7), H[i,:])
+    plt.bar(range(n_sigs), H[i,:])
+    plt.title(x_train.index[i])
 
 
 '''
