@@ -14,7 +14,6 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import csv
 
 import copy
 
@@ -31,7 +30,9 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 #mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0).transpose()
 
 #mc = pd.read_csv('data/WGS_PCAWG.96.csv', index_col=0, d).transpose()
-mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
+#mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
+mc = pd.read_csv('Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\DLBCL_1001\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
+
 context = mc.columns
 mutation = [s[2:5] for s in context]
 
@@ -83,7 +84,7 @@ class NMFAE(torch.nn.Module):
         return x
 
 # Model Initialization
-n_sigs = 7
+n_sigs = 5
 model = NMFAE(dim = n_sigs)
 
 # Validation using MSE Loss function
@@ -160,7 +161,7 @@ for epoch in range(epochs):
 
     
 
-        
+      
  #Patient early stopping - thanks to Elixir  
     if last_score > valid_loss - 1e-2:
         last_score = valid_loss
@@ -189,7 +190,7 @@ plt.legend()
 def plotsigs(context, mutation, intensities):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
               'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
-    plt.figure(figsize=(20,10))
+    plt.figure(figsize=(20,5))
     plt.bar(x = context, 
             height =  intensities/np.sum(intensities), 
             color = [colors[i] for i in mutation])
@@ -204,7 +205,7 @@ W_array = W.numpy()
 for i in range(n_sigs):
     plotsigs(context, mutation, W_array[:,i])
 
-
+'''
 H  = np.matmul(x_train, W_array).to_numpy()
 
 
@@ -214,7 +215,7 @@ for i in range(5):
     plt.title(x_train.index[i])
 
 
-'''
+
 # Defining the Plot Style
 plt.style.use('fivethirtyeight')
 plt.xlabel('Iterations')

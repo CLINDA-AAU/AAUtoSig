@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
-
-intensities = np.random.uniform(size = 96)
+sig1001 =  pd.read_csv(r'C:\Users\bjyw\Desktop\pics\signatures1001.csv')
+sig1001 = sig1001.to_numpy()[:,2:]
 context = ['A[C>A]A', 'A[C>A]C', 'A[C>A]G', 'A[C>A]T', 'C[C>A]A', 'C[C>A]C',
        'C[C>A]G', 'C[C>A]T', 'G[C>A]A', 'G[C>A]C', 'G[C>A]G', 'G[C>A]T',
        'T[C>A]A', 'T[C>A]C', 'T[C>A]G', 'T[C>A]T', 'A[C>G]A', 'A[C>G]C',
@@ -24,7 +25,7 @@ mutation = [s[2:5] for s in context]
 def plotsigs(context, mutation, intensities):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
               'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
-    plt.figure(figsize=(20,10))
+    plt.figure(figsize=(20,7))
     plt.bar(x = context, 
             height =  intensities/np.sum(intensities), 
             color = [colors[i] for i in mutation])
@@ -32,4 +33,6 @@ def plotsigs(context, mutation, intensities):
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
     plt.legend(handles,labels)
     plt.xticks(rotation=90)
-    
+
+for i in range(5):
+    plotsigs(context, mutation, sig1001[:,i])
