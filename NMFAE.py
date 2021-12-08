@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  1 08:40:05 2021
-
-@author: bjyw
-"""
-
-
 import torch
 from torchvision import transforms
 from torchvision.models.feature_extraction import get_graph_node_names
@@ -34,8 +26,6 @@ x_test_tensor = torch.tensor(x_test.values, dtype = torch.float32)
 
 trainloader = torch.utils.data.DataLoader(x_train_tensor, batch_size=8, shuffle=True)
 testloader = torch.utils.data.DataLoader(x_test_tensor, batch_size=8)
-
-
 
 
 # Creating linear (NMF autoencoder)
