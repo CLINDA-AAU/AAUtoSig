@@ -65,7 +65,7 @@ training_plot=[]
 validation_plot=[]
 
 last_score=np.inf
-max_es_rounds = 10
+max_es_rounds = 50
 es_rounds = max_es_rounds
 best_epoch= 0
 #l1_lambda = 0.001
@@ -91,7 +91,6 @@ for epoch in range(epochs):
       optimizer.zero_grad()
       loss.backward()
       optimizer.step()
-      W = model.dec1.weight.data
     # print statistics
     with torch.no_grad():
         for p in model.parameters():
@@ -156,7 +155,8 @@ def plotsigs(context, mutation, intensities):
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
     plt.legend(handles,labels)
     plt.xticks(rotation=90)
-    
+
+W = best_model.dec1.weight.data    
 W_array = W.numpy()
 
 
