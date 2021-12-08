@@ -21,16 +21,6 @@ import copy
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-
-
-
-#mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0)#.transpose()
-
-
-#mc = pd.read_csv('Q:/AUH-HAEM-FORSK-MutSigDLBCL222/generated_data/WGS_PCAWG_96_LymphBNHL.csv', index_col=0).transpose()
-
-#mc = pd.read_csv('data/WGS_PCAWG.96.csv', index_col=0, d).transpose()
-#mc = pd.read_csv('data/Ovarian_pooled.csv', index_col=0).transpose()
 mc = pd.read_csv('Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\DLBCL_1001\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
 
 context = mc.columns
@@ -42,7 +32,6 @@ x_test = mc.drop(x_train.index)
 x_train_tensor = torch.tensor(x_train.values, dtype = torch.float32)
 x_test_tensor = torch.tensor(x_test.values, dtype = torch.float32)
 
-#mc_tensor = torch.tensor(mc.values, dtype = torch.float32)
 trainloader = torch.utils.data.DataLoader(x_train_tensor, batch_size=8, shuffle=True)
 testloader = torch.utils.data.DataLoader(x_test_tensor, batch_size=8)
 
@@ -50,33 +39,13 @@ testloader = torch.utils.data.DataLoader(x_test_tensor, batch_size=8)
 
 
 # Creating linear (NMF autoencoder)
-# 96 ==> 8 ==> 96
+# 96 ==> dim ==> 96
 class NMFAE(torch.nn.Module):
     def __init__(self, dim):
         super().__init__()
         
-        
         self.enc1 = torch.nn.Linear(96, dim, bias = False)
         self.dec1 = torch.nn.Linear(dim, 96, bias = False)
-        
-        # Building an linear encoder
-        # 96 => dim
-        #self.encoder = torch.nn.Sequential(
-        #    torch.nn.Linear(96, dim, bias = False),
-        #    torch.nn.Identity() #also a placeholder for cooler func
-        #    )
-          
-        # Building an linear decoder 
-        # dim ==> 96
-        #self.decoder = torch.nn.Sequential(
-        #    torch.nn.Linear(dim, 96, bias = False),
-        #    torch.nn.Identity()
-        #)
-  
-    #def forward(self, x):
-    #    encoded = self.encoder(x)
-    #    decoded = self.decoder(encoded)
-    #    return decoded
 
     def forward(self, x):
         x = self.enc1(x)
@@ -93,10 +62,9 @@ loss_function = torch.nn.MSELoss(reduction='mean')
 
 
 # Using an Adam Optimizer with lr = 0.1
-# remove weight decay (l2 penalty) because i added l1 penalty in training
 optimizer = torch.optim.Adam(model.parameters(),
-                             lr = 1e-3)#,
-                             #weight_decay = 1e-8)
+                             lr = 1e-3,
+                             weight_decay = 1e-8)
 
 
 #Train
@@ -110,7 +78,7 @@ last_score=np.inf
 max_es_rounds = 10
 es_rounds = max_es_rounds
 best_epoch= 0
-l1_lambda = 0.001
+#l1_lambda = 0.001
 
 for epoch in range(epochs):
     model.train()
@@ -161,9 +129,9 @@ for epoch in range(epochs):
 
     
 
-      
+ 
  #Patient early stopping - thanks to Elixir  
-    if last_score > valid_loss - 1e-2:
+    if last_score > valid_loss:
         last_score = valid_loss
         best_epoch = epoch
         es_rounds = max_es_rounds
@@ -205,22 +173,6 @@ W_array = W.numpy()
 for i in range(n_sigs):
     plotsigs(context, mutation, W_array[:,i])
 
-'''
 H  = np.matmul(x_train, W_array).to_numpy()
 
 
-for i in range(5):
-    plt.figure(figsize=(16,12))
-    plt.bar(range(n_sigs), H[i,:])
-    plt.title(x_train.index[i])
-
-
-
-# Defining the Plot Style
-plt.style.use('fivethirtyeight')
-plt.xlabel('Iterations')
-plt.ylabel('Loss')
-
-# Plotting the last 100 values
-plt.plot(losses[-100:])
-'''
