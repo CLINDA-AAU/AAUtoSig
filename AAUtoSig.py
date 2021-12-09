@@ -21,11 +21,16 @@ mutation = [s[2:5] for s in context]
 x_train = mc.sample(frac=0.8)
 x_test = mc.drop(x_train.index)
 
-x_train_tensor = torch.tensor(x_train.values, dtype = torch.float32)
-x_test_tensor = torch.tensor(x_test.values, dtype = torch.float32)
+x_train_tensor = torch.tensor(x_train.values, 
+                              dtype = torch.float32)
+x_test_tensor = torch.tensor(x_test.values, 
+                             dtype = torch.float32)
 
-trainloader = torch.utils.data.DataLoader(x_train_tensor, batch_size=8, shuffle=True)
-testloader = torch.utils.data.DataLoader(x_test_tensor, batch_size=8)
+trainloader = torch.utils.data.DataLoader(x_train_tensor, 
+                                          batch_size=8, 
+                                          shuffle=True)
+testloader = torch.utils.data.DataLoader(x_test_tensor, 
+                                         batch_size=8)
 
 # Creating linear (NMF autoencoder)
 # 96 ==> 8 ==> 96
@@ -58,6 +63,9 @@ model = AAUtoSig(dim1 = 30, dim2 = n_sigs)
 loss_function = torch.nn.MSELoss(reduction='mean')
 #loss_function = torch.nn.KLDivLoss()
 
+def kl_poisson(p, q):
+    return torch.mean( torch.where(p != 0, p * torch.log(p / q) - p + q, 0))
+
 
 # Using an Adam Optimizer with lr = 0.1
 optimizer = torch.optim.Adam(model.parameters(),
@@ -87,7 +95,6 @@ for epoch in range(epochs):
         
       # Calculating the loss function
       loss = loss_function(reconstructed, data.view(-1,96))
-      
       # l1_norm = sum(p.abs().sum()
       #            for p in model.parameters())
  
@@ -104,22 +111,25 @@ for epoch in range(epochs):
     with torch.no_grad():
         for p in model.parameters():
             p.clamp_(min = 0)
-        valid_loss=0
-        train_loss=0
+            
         model.eval()
         
         inputs = x_train_tensor[:]
         outputs = model(inputs)
         
-        train_loss = loss_function(inputs, outputs)
+        train_loss = loss_function(outputs, inputs)
+        #train_loss = kl_poisson(inputs, outputs)
+
         training_plot.append(train_loss)
     
  
 
         inputs  = x_test_tensor
         outputs = model(inputs)
-        valid_loss = loss_function(inputs, outputs)
-      
+        valid_loss = loss_function(outputs, inputs)
+        #valid_loss = kl_poisson(inputs, outputs)
+
+        
         validation_plot.append(valid_loss)
         print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
                                                                       np.round(training_plot[-1],2), 
@@ -131,6 +141,7 @@ for epoch in range(epochs):
         best_epoch = epoch
         es_rounds = max_es_rounds
         best_model = copy.deepcopy(model)
+        '''
     else:
         if es_rounds > 0:
             es_rounds -=1
@@ -139,13 +150,13 @@ for epoch in range(epochs):
             print('Best epoch found: nº {}'.format(best_epoch))
             print('Exiting. . .')
             break
-
+'''
 plt.figure(figsize=(16,12))
 plt.subplot(3, 1, 1)
 plt.title('Score per epoch')
-plt.ylabel('Kullback Leibler Divergence')
-plt.plot(list(range(len(training_plot))), validation_plot, label='Validation DKL')
-plt.plot(list(range(len(training_plot))), training_plot, label='Train DKL')
+plt.ylabel('Mean Squared Error')
+plt.plot(list(range(len(training_plot))), validation_plot, label='Validation MSE')
+plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
 plt.legend()
 
 
