@@ -159,7 +159,6 @@ plt.plot(list(range(len(training_plot))), validation_plot, label='Validation MSE
 plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
 plt.legend()
 
-
 def plotsigs(context, mutation, intensities):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
               'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
