@@ -14,7 +14,7 @@ from plots import plotsigs
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-mc = pd.read_csv(r'K:\FORSK-Projekt\Projekter\Scientific Projects\223_PhD_Ida\external_data\DLBCL_1001\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
+mc = pd.read_csv(r'K:\FORSK-Projekt\Projekter\Scientific Projects\223_PhD_Ida\article_1\external_data\DLBCL_1001\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
 
 context = mc.columns
 mutation = [s[2:5] for s in context]
