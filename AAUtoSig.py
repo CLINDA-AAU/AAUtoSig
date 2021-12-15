@@ -1,6 +1,4 @@
 import torch
-from torchvision import transforms
-from torchvision.models.feature_extraction import get_graph_node_names
 import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
@@ -8,13 +6,13 @@ import pandas as pd
 import numpy as np
 
 import copy
-from plots import plotsigs
+from functions import plotsigs
 
 #because plots broke the kernel
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-mc = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
+mc = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\DLBCL_1001\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
 
 context = mc.columns
 mutation = [s[2:5] for s in context]
