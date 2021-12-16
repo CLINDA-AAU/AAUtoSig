@@ -12,7 +12,7 @@ from functions import plotsigs
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
-mc = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\DLBCL_1001\DLBCL_mut_matrix.tsv', sep='\t', index_col=0).transpose()
+mc = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_trainset1_80p.csv', sep=',', index_col=0).transpose()
 
 context = mc.columns
 mutation = [s[2:5] for s in context]
@@ -123,7 +123,7 @@ for epoch in range(epochs):
     
  
 
-        inputs  = x_test_tensor
+        inputs  = x_test_tensor[:]
         outputs = model(inputs)
         valid_loss = loss_function(outputs, inputs)
         #valid_loss = kl_poisson(inputs, outputs)
@@ -163,5 +163,13 @@ W = best_model.dec1.weight.data
 W_array = W.numpy()
 
 
-for i in range(n_sigs):
-    plotsigs(context, mutation, W_array[:,i])    
+#for i in range(n_sigs):
+#    plotsigs(context, mutation, W_array[:,i])    
+
+
+validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_testset1_20p.csv', sep=',', index_col=0).transpose()
+
+x_validation_tensor = torch.tensor(validation_set.values, 
+                             dtype = torch.float32)
+res = model(x_validation_tensor)
+print(loss_function(res,x_validation_tensor))
