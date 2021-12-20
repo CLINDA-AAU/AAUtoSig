@@ -171,5 +171,5 @@ validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\genera
 
 x_validation_tensor = torch.tensor(validation_set.values, 
                              dtype = torch.float32)
-res = model(x_validation_tensor)
+res = best_model(x_validation_tensor)
 print(loss_function(res,x_validation_tensor))

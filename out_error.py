@@ -1,6 +1,9 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
+import pandas as pd
+
+import copy
 
 #This scrips calculates the out-of-sample error using the AAUtoSig method:
 def out_error(train_df, validation_df):
@@ -61,11 +64,11 @@ def out_error(train_df, validation_df):
     
     
     #Train
-    epochs = 100
+    epochs = 500
     outputs = []
     
-    training_plot=[]
-    validation_plot=[]
+    #training_plot=[]
+    #validation_plot=[]
     
     last_score=np.inf
     max_es_rounds = 50
@@ -101,13 +104,13 @@ def out_error(train_df, validation_df):
                 
             model.eval()
             
-            inputs = x_train_tensor[:]
-            outputs = model(inputs)
+            #inputs = x_train_tensor[:]
+            #outputs = model(inputs)
             
-            train_loss = loss_function(outputs, inputs)
+            #train_loss = loss_function(outputs, inputs)
             #train_loss = kl_poisson(inputs, outputs)
     
-            training_plot.append(train_loss)
+            #training_plot.append(train_loss)
         
      
     
@@ -117,18 +120,18 @@ def out_error(train_df, validation_df):
             #valid_loss = kl_poisson(inputs, outputs)
     
             
-            validation_plot.append(valid_loss)
-            print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
-                                                                          np.round(training_plot[-1],2), 
-                                                                          np.round(validation_plot[-1],2)))
-    '''
+            #validation_plot.append(valid_loss)
+            #print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
+                                                                          #np.round(training_plot[-1],2), 
+                                                                          #np.round(validation_plot[-1],2)))
+    
      #Patient early stopping - thanks to Elixir  
         if last_score > valid_loss:
             last_score = valid_loss
             best_epoch = epoch
             es_rounds = max_es_rounds
             best_model = copy.deepcopy(model)
-    
+    '''
         else:
             if es_rounds > 0:
                 es_rounds -=1
@@ -140,5 +143,11 @@ def out_error(train_df, validation_df):
     '''    
     x_validation_tensor = torch.tensor(validation_df.values, 
                                  dtype = torch.float32)
-    res = model(x_validation_tensor)
+    res = best_model(x_validation_tensor)
     return(loss_function(res,x_validation_tensor))
+
+train_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_trainset1_80p.csv', sep=',', index_col=0).transpose()
+validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_testset1_20p.csv', sep=',', index_col=0).transpose()
+
+asd = [out_error(train_set, validation_set) for i in range(1000)]
+
