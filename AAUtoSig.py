@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import torch
 import torch.nn.functional as F
 
@@ -59,11 +61,8 @@ n_sigs = 5
 model = AAUtoSig(dim1 = 30, dim2 = n_sigs)
 
 # Validation using MSE Loss function
-loss_function = torch.nn.MSELoss(reduction='mean')
-#loss_function = torch.nn.KLDivLoss()
-
-def kl_poisson(p, q):
-    return torch.mean( torch.where(p != 0, p * torch.log(p / q) - p + q, 0))
+#loss_function = torch.nn.MSELoss(reduction='mean')
+loss_function = torch.nn.KLDivLoss()
 
 
 # Using an Adam Optimizer with lr = 0.1
@@ -93,7 +92,7 @@ for epoch in range(epochs):
       reconstructed = model(data.view(-1,96))
         
       # Calculating the loss function
-      loss = loss_function(reconstructed, data.view(-1,96))
+      loss = loss_function(torch.log(reconstructed), data.view(-1,96)) + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
       # l1_norm = sum(p.abs().sum()
       #            for p in model.parameters())
  
@@ -108,15 +107,19 @@ for epoch in range(epochs):
       #W = model.dec1.weight.data
     # print statistics
     with torch.no_grad():
+        '''
         for p in model.parameters():
             p.clamp_(min = 0)
-            
+        '''
+        for p in model.dec1.weight:
+            p.clamp_(min = 0)
+        
         model.eval()
         
         inputs = x_train_tensor[:]
         outputs = model(inputs)
         
-        train_loss = loss_function(outputs, inputs)
+        train_loss = loss_function(torch.log(outputs),inputs)+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
         #train_loss = kl_poisson(inputs, outputs)
 
         training_plot.append(train_loss)
@@ -125,7 +128,7 @@ for epoch in range(epochs):
 
         inputs  = x_test_tensor[:]
         outputs = model(inputs)
-        valid_loss = loss_function(outputs, inputs)
+        valid_loss = loss_function(torch.log(outputs), inputs) + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
         #valid_loss = kl_poisson(inputs, outputs)
 
         
@@ -140,16 +143,18 @@ for epoch in range(epochs):
         best_epoch = epoch
         es_rounds = max_es_rounds
         best_model = copy.deepcopy(model)
-        '''
+"""        
     else:
         if es_rounds > 0:
             es_rounds -=1
         else:
-            print('EARLY-STOPPING !')
+            print('EARLY STOPPING')
             print('Best epoch found: nº {}'.format(best_epoch))
             print('Exiting. . .')
             break
-'''
+
+"""
+
 plt.figure(figsize=(16,12))
 plt.subplot(3, 1, 1)
 plt.title('Score per epoch')
@@ -163,8 +168,8 @@ W = best_model.dec1.weight.data
 W_array = W.numpy()
 
 
-#for i in range(n_sigs):
-#    plotsigs(context, mutation, W_array[:,i])    
+for i in range(n_sigs):
+    plotsigs(context, mutation, W_array[:,i])    
 
 
 validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_testset1_20p.csv', sep=',', index_col=0).transpose()
