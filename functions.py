@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import scipy.spatial as sp
@@ -44,3 +45,29 @@ def cosine_perm(A,B):
             best_idx = idx
             
     return((best_pe, best_idx))
+
+res = np.round(cosine_perm(A, B)[0],2)
+
+
+signatures = ["S1", "S2", "S3"]
+
+
+
+fig, ax = plt.subplots()
+im = ax.imshow(res)
+
+# Show all ticks and label them with the respective list entries
+ax.set_xticks(np.arange(len(signatures)))
+ax.set_xticklabels(signatures)
+ax.set_yticks(np.arange(len(signatures)))
+ax.set_yticklabels(signatures)
+
+
+# Loop over data dimensions and create text annotations.
+for i in range(len(signatures)):
+    for j in range(len(signatures)):
+        text = ax.text(j, i, res[i, j],
+                       ha="center", va="center", color="w")
+
+fig.tight_layout()
+plt.show()

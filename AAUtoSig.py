@@ -28,10 +28,10 @@ x_test_tensor = torch.tensor(x_test.values,
                              dtype = torch.float32)
 
 trainloader = torch.utils.data.DataLoader(x_train_tensor, 
-                                          batch_size=8, 
+                                          batch_size=16, 
                                           shuffle=True)
 testloader = torch.utils.data.DataLoader(x_test_tensor, 
-                                         batch_size=8)
+                                         batch_size=16)
 
 # Creating linear (NMF autoencoder)
 # 96 ==> 8 ==> 96
@@ -47,32 +47,35 @@ class AAUtoSig(torch.nn.Module):
           
         # Building an linear decoder 
         # dim ==> 96
-        self.dec1 = torch.nn.Linear(dim2, 96, bias = False)
+        self.dec1 = torch.nn.Linear(dim2, dim1, bias = False)
+        self.dec2 = torch.nn.Linear(dim1, 96, bias = False)
             
 
     def forward(self, x):
         x = F.softplus(self.enc1(x))
         x = F.softplus(self.enc2(x))
         x = F.softplus(self.dec1(x))
+        x = F.softplus(self.dec2(x))
         return x
     
 # Model Initialization
 n_sigs = 5
-model = AAUtoSig(dim1 = 30, dim2 = n_sigs)
+model = AAUtoSig(dim1 = 50, dim2 = 15)
 
 # Validation using MSE Loss function
-#loss_function = torch.nn.MSELoss(reduction='mean')
-loss_function = torch.nn.KLDivLoss()
+loss_function = torch.nn.MSELoss(reduction='mean')
+#loss_function = torch.nn.KLDivLoss()
+#Note the torch KL div assumes that the frist argument is already log-transformed
 
 
 # Using an Adam Optimizer with lr = 0.1
 optimizer = torch.optim.Adam(model.parameters(),
-                             lr = 1e-3,
-                             weight_decay = 1e-8)
+                             lr = 1e-3)#,
+                             #weight_decay = 1e-8)
 
 
 #Train
-epochs = 500
+epochs = 1000
 outputs = []
 
 training_plot=[]
@@ -92,7 +95,7 @@ for epoch in range(epochs):
       reconstructed = model(data.view(-1,96))
         
       # Calculating the loss function
-      loss = loss_function(torch.log(reconstructed), data.view(-1,96)) + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+      loss = loss_function(reconstructed, data.view(-1,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
       # l1_norm = sum(p.abs().sum()
       #            for p in model.parameters())
  
@@ -119,7 +122,7 @@ for epoch in range(epochs):
         inputs = x_train_tensor[:]
         outputs = model(inputs)
         
-        train_loss = loss_function(torch.log(outputs),inputs)+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+        train_loss = loss_function(outputs,inputs) #+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
         #train_loss = kl_poisson(inputs, outputs)
 
         training_plot.append(train_loss)
@@ -128,7 +131,7 @@ for epoch in range(epochs):
 
         inputs  = x_test_tensor[:]
         outputs = model(inputs)
-        valid_loss = loss_function(torch.log(outputs), inputs) + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+        valid_loss = loss_function(outputs, inputs)# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
         #valid_loss = kl_poisson(inputs, outputs)
 
         
@@ -163,7 +166,7 @@ plt.plot(list(range(len(training_plot))), validation_plot, label='Validation MSE
 plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
 plt.legend()
 
-
+'''
 W = best_model.dec1.weight.data    
 W_array = W.numpy()
 
@@ -178,3 +181,4 @@ x_validation_tensor = torch.tensor(validation_set.values,
                              dtype = torch.float32)
 res = best_model(x_validation_tensor)
 print(loss_function(res,x_validation_tensor))
+'''
