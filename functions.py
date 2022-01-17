@@ -25,8 +25,8 @@ def plotsigs(context, mutation, intensities):
 #possible diagonal values. 
 #It returns the permuted cosine matrix, and the arrangement of matrix B's rows
 #that generates the highest cosine similarity with the corresponding rows in A
-A = np.random.rand(3,2)
-B = np.random.rand(3,2)
+#A = np.random.rand(3,2)
+#B = np.random.rand(3,2)
 def cosine_perm(A,B):
     def acc(x):
         return(np.sum(np.diag(x)))
@@ -45,7 +45,7 @@ def cosine_perm(A,B):
             best_idx = idx
             
     return((best_pe, best_idx))
-
+'''
 res = np.round(cosine_perm(A, B)[0],2)
 
 
@@ -71,3 +71,4 @@ for i in range(len(signatures)):
 
 fig.tight_layout()
 plt.show()
+'''
