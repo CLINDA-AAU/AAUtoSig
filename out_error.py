@@ -150,4 +150,4 @@ train_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_d
 validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_testset1_20p.csv', sep=',', index_col=0).transpose()
 
 asd = [out_error(train_set, validation_set) for i in range(1000)]
-
+print(asd)

@@ -23,9 +23,9 @@ mutation = [s[2:5] for s in context]
 x_train = mc.sample(frac=0.8)
 x_test = mc.drop(x_train.index)
 
+n_sigs = 5
 
-
-model = AAUtoSig(dim1 = 30, dim2 = 5)
+model = AAUtoSig(dim1 = 30, dim2 = n_sigs)
 
 
 # Validation using MSE Loss function
@@ -46,7 +46,7 @@ train_AAUtoSig(epochs = 500,
                loss_function = loss_function, 
                optimizer = optimizer)
 '''
-W = best_model.dec1.weight.data    
+W = model.dec1.weight.data    
 W_array = W.numpy()
 
 
@@ -58,6 +58,6 @@ validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\genera
 
 x_validation_tensor = torch.tensor(validation_set.values, 
                              dtype = torch.float32)
-res = best_model(x_validation_tensor)
+res = model(x_validation_tensor)
 print(loss_function(res,x_validation_tensor))
 '''

@@ -129,5 +129,6 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_function, optimizer):
     plt.plot(list(range(len(training_plot))), validation_plot, label='Validation MSE')
     plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
     plt.legend()
+    plt.show()
     
     return(best_model)
