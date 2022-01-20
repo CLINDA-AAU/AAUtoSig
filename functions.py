@@ -6,17 +6,20 @@ import scipy.spatial as sp
 from itertools import permutations
 
 
-def plotsigs(context, mutation, intensities):
+def plotsigs(context, mutation, signatures, nsigs):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
-              'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
-    plt.figure(figsize=(20,7))
-    plt.bar(x = context, 
-            height =  intensities/np.sum(intensities), 
-            color = [colors[i] for i in mutation])
+                'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
     labels = list(colors.keys())
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+    for i in range(nsigs):
+        plt.subplot(nsigs,1, (i+1))
+        #plt.figure(figsize=(20,7))
+        plt.bar(x = context, 
+                height =  signatures[:,i]/np.sum(signatures[:,i]), 
+                color = [colors[i] for i in mutation])
+        plt.xticks([])
     plt.legend(handles,labels)
-    plt.xticks(rotation=90)
+    #plt.xticks(rotation=90)
     plt.show()
     
 

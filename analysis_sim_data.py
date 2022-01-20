@@ -13,8 +13,8 @@ from functions import plotsigs
 from NMFAE_init import NMFAE, train_NMFAE
 
 #because plots broke the kernel
-import os
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+#import os
+#os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 mc = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\generated_data\Simulated_data\4sigs600pat14012022\mut_matrix.csv', sep=',',index_col=0).transpose()
 
@@ -33,13 +33,10 @@ signatures = nmf_model.components_
 ref_exposures = nmf_model.transform(X = x_test)
 rec = np.dot(ref_exposures, signatures)
 nmf_MSE = np.mean(((x_test - rec)**2).to_numpy())
-  
-'''
-for i in range(n_sigs):
-  plotsigs(context, mutation, signatures[:,i])    
+
+plotsigs(context, mutation, signatures.transpose(), n_sigs)    
 
 #-----------------------------------------------NMFAE------------------------------------------------------------
-'''
 model = NMFAE(dim1 = n_sigs)
 
 
@@ -64,13 +61,18 @@ W = model.dec1.weight.data
 W_array = W.numpy()
 
 
-for i in range(n_sigs):
-    plotsigs(context, mutation, W_array[:,i])    
+plotsigs(context, mutation, W_array, n_sigs)    
+
+#-----------------------------------------------TRUE SIGS------------------------------------------------------------
+sigs = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\generated_data\Simulated_data\4sigs600pat14012022\signatures.csv', sep=',',index_col=0).transpose()
+plotsigs(context, mutation, sigs.transpose(), n_sigs)    
 
 
+'''
 validation_set = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\generated_data\DLBCL1001_testset1_20p.csv', sep=',', index_col=0).transpose()
 
 x_validation_tensor = torch.tensor(validation_set.values, 
                              dtype = torch.float32)
 res = model(x_validation_tensor)
 print(loss_function(res,x_validation_tensor))
+'''

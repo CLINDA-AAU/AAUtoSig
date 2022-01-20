@@ -23,8 +23,8 @@ class NMFAE(torch.nn.Module):
             
 
     def forward(self, x):
-        x = F.self.enc1(x)
-        x = F.self.dec1(x)
+        x = self.enc1(x)
+        x = self.dec1(x)
         return x
         
     # Model Initialization
@@ -64,8 +64,6 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer):
         with torch.no_grad():
             for p in model.parameters():
                 p.clamp_(min = 0)
-    
-            print("Epoch {}, training loss {}".format(epoch, np.round(training_plot[-1],2)))
     
     plt.figure(figsize=(16,12))
     plt.subplot(3, 1, 1)
