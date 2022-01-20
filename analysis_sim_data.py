@@ -5,6 +5,8 @@ import torch
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import sklearn
+from sklearn.decomposition import NMF
 
 import copy
 from functions import plotsigs
@@ -25,11 +27,20 @@ x_test = mc.drop(x_train.index)
 n_sigs = 4
 
 #-----------------------------------------------NMF--------------------------------------------------------------
-
+nmf_model = NMF(n_components=n_sigs)
+exposures = nmf_model.fit_transform(x_train)
+signatures = nmf_model.components_
+ref_exposures = nmf_model.transform(X = x_test)
+rec = np.dot(ref_exposures, signatures)
+nmf_MSE = np.mean(((x_test - rec)**2).to_numpy())
+  
+'''
+for i in range(n_sigs):
+  plotsigs(context, mutation, signatures[:,i])    
 
 #-----------------------------------------------NMFAE------------------------------------------------------------
-
-model = NMFAE(dim1 = 30, dim2 = n_sigs)
+'''
+model = NMFAE(dim1 = n_sigs)
 
 
 # Validation using MSE Loss function

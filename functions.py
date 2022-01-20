@@ -17,6 +17,7 @@ def plotsigs(context, mutation, intensities):
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
     plt.legend(handles,labels)
     plt.xticks(rotation=90)
+    plt.show()
     
 
 
