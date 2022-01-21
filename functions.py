@@ -50,7 +50,7 @@ def cosine_perm(A,B):
             best_pe = pe
             best_idx = idx
             
-    return((best_pe, best_idx))
+    return((best_pe, list(best_idx)))
 '''
 res = np.round(cosine_perm(A, B)[0],2)
 
