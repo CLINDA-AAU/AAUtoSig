@@ -65,12 +65,4 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer):
             for p in model.parameters():
                 p.clamp_(min = 0)
     
-    plt.figure(figsize=(16,12))
-    plt.subplot(3, 1, 1)
-    plt.title('Score per epoch')
-    plt.ylabel('Mean Squared Error')
-    plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
-    plt.legend()
-    plt.show()
-    
     return(model)

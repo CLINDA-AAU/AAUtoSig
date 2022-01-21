@@ -18,7 +18,7 @@ def plotsigs(context, mutation, signatures, nsigs):
                 height =  signatures[:,i]/np.sum(signatures[:,i]), 
                 color = [colors[i] for i in mutation])
         plt.xticks([])
-    plt.legend(handles,labels)
+    #plt.legend(handles,labels)
     #plt.xticks(rotation=90)
     plt.show()
     
