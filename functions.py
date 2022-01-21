@@ -6,7 +6,7 @@ import scipy.spatial as sp
 from itertools import permutations
 
 
-def plotsigs(context, mutation, signatures, nsigs):
+def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
                 'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
     labels = list(colors.keys())
@@ -18,6 +18,8 @@ def plotsigs(context, mutation, signatures, nsigs):
                 height =  signatures[:,i]/np.sum(signatures[:,i]), 
                 color = [colors[i] for i in mutation])
         plt.xticks([])
+        if i == 0:
+            plt.title(title)
     #plt.legend(handles,labels)
     #plt.xticks(rotation=90)
     plt.show()
