@@ -3,8 +3,49 @@ import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import scipy.spatial as sp
+from random import sample
 from itertools import permutations
 
+def simulate_counts(nsigs, npatients):
+  #Arrange COSMIC to be the same ordering as count data
+  COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
+  context = COSMIC.index
+  mutation = [s[2:5] for s in context]
+  COSMIC['mutation'] = mutation
+  COSMIC = COSMIC.sort_values('mutation')
+  mutation = COSMIC['mutation']
+  COSMIC = COSMIC.drop('mutation', axis = 1)
+
+
+  n_mutations = len(mutation)
+  patients = ["Patient" + str(i) for i in range(1,(npatients+1))]
+
+  sig_names = sample(list(COSMIC.columns), nsigs)
+  sigs = COSMIC[sig_names]
+  def generate_exposure(nsigs):
+    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs)>0 
+    not_zinf = [not z for z in zinf]
+    #parametrized negative binomial with mean 600
+    total_muts = np.random.negative_binomial(p =1- 300/301, n = 2, size = 1)
+    distribution = np.random.dirichlet(alpha=[1]*nsigs, size= 1)
+
+    res = (np.multiply(not_zinf, distribution)*total_muts).tolist()
+    #because it somehow made a list of lists
+    return(res[0])
+  
+  E = [generate_exposure(nsigs) for _ in range(npatients)]
+  Exposures = pd.DataFrame(E).transpose()
+
+  Exposures.columns = patients
+  Exposures.index = sig_names
+  
+  V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
+  V.columns = patients
+  V.index = mutation
+
+  return((V, sigs, Exposures))
+
+  
 
 def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
