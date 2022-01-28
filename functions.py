@@ -14,6 +14,7 @@ def simulate_counts(nsigs, npatients):
   COSMIC['mutation'] = mutation
   COSMIC = COSMIC.sort_values('mutation')
   mutation = COSMIC['mutation']
+  context = COSMIC.index
   COSMIC = COSMIC.drop('mutation', axis = 1)
 
 
@@ -41,7 +42,7 @@ def simulate_counts(nsigs, npatients):
   
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
   V.columns = patients
-  V.index = mutation
+  V.index = context
 
   return((V, sigs, Exposures))
 
