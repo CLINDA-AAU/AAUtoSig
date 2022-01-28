@@ -10,6 +10,7 @@ import copy
 
 class NMFAE(torch.nn.Module):
     def __init__(self, dim1):
+    
         super().__init__()
 
         
@@ -29,13 +30,13 @@ class NMFAE(torch.nn.Module):
         
     # Model Initialization
                                 
-def train_NMFAE(epochs, model, x_train, loss_function, optimizer):
+def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
     
     x_train_tensor = torch.tensor(x_train.values, 
                               dtype = torch.float32)
     
     trainloader = torch.utils.data.DataLoader(x_train_tensor, 
-                                              batch_size=16, 
+                                              batch_size=batch_size, 
                                               shuffle=True)
     
     outputs = []
@@ -52,10 +53,10 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer):
         
         for data in trainloader:
           # Output of Autoencoder
-          reconstructed = model(data.view(-1,96))
+          reconstructed = model(data.view(batch_size,96))
             
           # Calculating the loss function
-          loss = loss_function(reconstructed, data.view(-1,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+          loss = loss_function(reconstructed, data.view(batch_size,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
 
           optimizer.zero_grad()
           loss.backward()
