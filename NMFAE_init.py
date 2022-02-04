@@ -39,29 +39,20 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
                                               batch_size=batch_size, 
                                               shuffle=True)
     
-    outputs = []
-    
-    training_plot=[]    
-    last_score=np.inf
-    max_es_rounds = 50
-    es_rounds = max_es_rounds
-    best_epoch= 0
-    #l1_lambda = 0.001
     
     for epoch in range(epochs):
         model.train()
         
         for data in trainloader:
           # Output of Autoencoder
-          reconstructed = model(data.view(batch_size,96))
+          reconstructed = model(data)#.view(-1,96))
             
           # Calculating the loss function
-          loss = loss_function(reconstructed, data.view(batch_size,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+          loss = loss_function(reconstructed, data)#.view(-1,96))
 
           optimizer.zero_grad()
           loss.backward()
           optimizer.step()
-        # print statistics
         with torch.no_grad():
             for p in model.parameters():
                 p.clamp_(min = 0)
