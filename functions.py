@@ -46,7 +46,7 @@ def simulate_counts(nsigs, npatients):
 
   return((V, sigs, Exposures))
 
-  
+  print(simulate_counts(4, 17))
 
 def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 

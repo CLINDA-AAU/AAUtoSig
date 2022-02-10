@@ -96,18 +96,19 @@ optimization_AE = partial(
 
 result = []
 for _ in range(5):
-    resNMF = gp_minimize(
-        optimization_NMF, 
-        dimensions = param_space,
-        n_calls = 15,
-        n_random_starts = 10,
-        verbose = 1)
+    #resNMF = gp_minimize(
+    #    optimization_NMF, 
+    #    dimensions = param_space,
+    #    n_calls = 15,
+    #    n_random_starts = 10,
+    #    verbose = 1)
     resAE = gp_minimize(
         optimization_AE, 
         dimensions = param_space,
         n_calls = 15,
         n_random_starts = 10,
-        verbose = 1)
-    result.append([resNMF.x, resAE.x])
+        verbose = 10)
+    #result.append([resNMF.x, resAE.x])
+    result.append(resAE.x)
 
 print(result)
