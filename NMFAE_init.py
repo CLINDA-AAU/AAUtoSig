@@ -57,8 +57,9 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
             for p in model.parameters():
                 p.clamp_(min = 0)
 
+        '''
         if last_score > loss:
             last_score = loss
             best_model = copy.deepcopy(model)
-    
-    return(best_model)
+        '''
+    return(model)
