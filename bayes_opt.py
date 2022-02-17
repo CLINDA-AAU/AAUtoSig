@@ -94,21 +94,13 @@ optimization_AE = partial(
     X = X
 )
 
-result = []
-for _ in range(5):
-    #resNMF = gp_minimize(
-    #    optimization_NMF, 
-    #    dimensions = param_space,
-    #    n_calls = 15,
-    #    n_random_starts = 10,
-    #    verbose = 1)
-    resAE = gp_minimize(
-        optimization_AE, 
-        dimensions = param_space,
-        n_calls = 15,
-        n_random_starts = 10,
-        verbose = 10)
-    #result.append([resNMF.x, resAE.x])
-    result.append(resAE.x)
+
+resAE = gp_minimize(
+    optimization_AE, 
+    dimensions = param_space,
+    n_calls = 10,
+    n_random_starts = 10,
+    verbose = 1)
+result = resAE.x
 
 print(result)
