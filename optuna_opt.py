@@ -65,14 +65,9 @@ def optuna_tune(X, nsig):
 
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=70, timeout=600)
+    study.optimize(objective, n_trials=70, timeout=600, n_jobs=3)
 
     trial = study.best_trial
 
     return trial.params
-
-X,_,_ = simulate_counts(5, 100)
-X = X.transpose()
-z = optuna_tune(X, 5)
-print(z)
 
