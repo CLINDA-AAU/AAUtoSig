@@ -6,6 +6,7 @@ import optuna
 
 from sklearn import model_selection
 from NMFAE_init import NMFAE, train_NMFAE
+from AAUtoSig_init import AAUtoSig, train_AAUtoSig
 from functools import partial 
 from skopt import space
 from skopt import gp_minimize
@@ -25,7 +26,8 @@ def optuna_tune(X, nsig):
         optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
         
         
-        model = NMFAE(nsig)
+        #model = NMFAE(nsig)
+        model = AAUtoSig(dim1 = nsig)
         kf = model_selection.KFold()
 
         out_err = []
@@ -35,8 +37,17 @@ def optuna_tune(X, nsig):
         for train, test in kf.split(X):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:]
-
+            '''
             train_NMFAE(
+                epochs = 200, 
+                model = model, 
+                x_train = x_train, 
+                loss_function = loss_function, 
+                optimizer = optimizer,
+                batch_size = int(batch_size)
+                )
+            '''
+            train_AAUtoSig(
                 epochs = 200, 
                 model = model, 
                 x_train = x_train, 
@@ -65,7 +76,7 @@ def optuna_tune(X, nsig):
 
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=70, timeout=600, n_jobs=3)
+    study.optimize(objective, n_trials=10, timeout=600, n_jobs=3)
 
     trial = study.best_trial
 

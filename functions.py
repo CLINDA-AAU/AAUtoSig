@@ -6,9 +6,10 @@ import scipy.spatial as sp
 from random import sample
 from itertools import permutations
 
-def simulate_counts(nsigs, npatients):
+def simulate_counts(nsigs, npatients, nonlinear = False):
   #Arrange COSMIC to be the same ordering as count data
-  COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
+  #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
+  COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
   context = COSMIC.index
   mutation = [s[2:5] for s in context]
   COSMIC['mutation'] = mutation
@@ -18,11 +19,17 @@ def simulate_counts(nsigs, npatients):
   COSMIC = COSMIC.drop('mutation', axis = 1)
 
 
-  n_mutations = len(mutation)
   patients = ["Patient" + str(i) for i in range(1,(npatients+1))]
 
   sig_names = sample(list(COSMIC.columns), nsigs)
   sigs = COSMIC[sig_names]
+  if nonlinear:
+      samp = sample(list(sigs.columns), 2)
+      prod = sigs[samp[0]]*0.6 + sigs[samp[1]]*0.4
+      name = samp[0] + "+" + samp[1]
+      sigs[name] = prod
+      sig_names.append(name)
+
   def generate_exposure(nsigs):
     zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs)>0 
     not_zinf = [not z for z in zinf]
@@ -34,7 +41,7 @@ def simulate_counts(nsigs, npatients):
     #because it somehow made a list of lists
     return(res[0])
   
-  E = [generate_exposure(nsigs) for _ in range(npatients)]
+  E = [generate_exposure(nsigs + 1) for _ in range(npatients)]
   Exposures = pd.DataFrame(E).transpose()
 
   Exposures.columns = patients
@@ -46,7 +53,6 @@ def simulate_counts(nsigs, npatients):
 
   return((V, sigs, Exposures))
 
-  print(simulate_counts(4, 17))
 
 def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
