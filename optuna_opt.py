@@ -76,7 +76,7 @@ def optuna_tune(X, nsig):
 
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=10, timeout=600, n_jobs=3)
+    study.optimize(objective, n_trials=70, timeout=600, n_jobs=3)
 
     trial = study.best_trial
 
