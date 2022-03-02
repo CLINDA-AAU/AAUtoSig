@@ -78,7 +78,7 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
             for p in model.parameters():
                 p.clamp_(min = 0)
             '''
-            for p in model.dec1.weight:
+            for p in model.dec2.weight:
                 p.clamp_(min = 0)
             """  
             model.eval()

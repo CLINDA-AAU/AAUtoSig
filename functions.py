@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -6,7 +7,7 @@ import scipy.spatial as sp
 from random import sample
 from itertools import permutations
 
-def simulate_counts(nsigs, npatients, nonlinear = False):
+def simulate_counts(nsigs, npatients, loglinear = False):
   #Arrange COSMIC to be the same ordering as count data
   #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
@@ -18,17 +19,15 @@ def simulate_counts(nsigs, npatients, nonlinear = False):
   context = COSMIC.index
   COSMIC = COSMIC.drop('mutation', axis = 1)
 
-
-  patients = ["Patient" + str(i) for i in range(1,(npatients+1))]
+  patients = ['Patient' + str(i) for i in range(1,(npatients+1))]
 
   sig_names = sample(list(COSMIC.columns), nsigs)
-  sigs = COSMIC[sig_names]
-  if nonlinear:
-      samp = sample(list(sigs.columns), 2)
-      prod = sigs[samp[0]]*0.6 + sigs[samp[1]]*0.4
-      name = samp[0] + "+" + samp[1]
-      sigs[name] = prod
-      sig_names.append(name)
+  sigs_true = COSMIC[sig_names]
+  sigs = sigs_true[:]
+  if loglinear:
+      sigs[sigs == 0] = 1e-7
+      # Der er 65 nuller i COSMIC i alt
+      sigs = np.log(sigs)
 
   def generate_exposure(nsigs):
     zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs)>0 
@@ -40,19 +39,21 @@ def simulate_counts(nsigs, npatients, nonlinear = False):
     res = (np.multiply(not_zinf, distribution)*total_muts).tolist()
     #because it somehow made a list of lists
     return(res[0])
-  
-  E = [generate_exposure(nsigs + 1) for _ in range(npatients)]
+  E = [generate_exposure(nsigs) for _ in range(npatients)]
   Exposures = pd.DataFrame(E).transpose()
 
   Exposures.columns = patients
   Exposures.index = sig_names
   
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
+  V = np.exp(V) if loglinear else V
   V.columns = patients
   V.index = context
 
-  return((V, sigs, Exposures))
+  return((V, sigs_true, Exposures))
 
+a,b,c = simulate_counts(4, 15, loglinear=True)
+print(a)
 
 def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
