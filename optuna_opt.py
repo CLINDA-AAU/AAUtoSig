@@ -33,7 +33,6 @@ def optuna_tune(X, nsig):
         out_err = []
         loss_function = torch.nn.MSELoss(reduction='mean')
         optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
-        split = 0
         for train, test in kf.split(X):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:]
@@ -62,10 +61,6 @@ def optuna_tune(X, nsig):
             cv_fit = model(cv_test_tensor)
             err = float(loss_function(cv_fit,cv_test_tensor).detach().numpy())
             out_err.append(err)
-            split += 1
-        
-        #this should actually be epoch
-        trial.report(err, split)
         
 
         # Handle pruning based on the intermediate value.
@@ -76,9 +71,11 @@ def optuna_tune(X, nsig):
 
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=70, timeout=600, n_jobs=3)
+    study.optimize(objective, n_trials=70, timeout=600)
 
     trial = study.best_trial
 
     return trial.params
 
+X,_,_ = simulate_counts(5, 600)
+optuna_tune(X.transpose(), 5)

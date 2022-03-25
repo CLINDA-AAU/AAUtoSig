@@ -52,8 +52,7 @@ def simulate_counts(nsigs, npatients, loglinear = False):
 
   return((V, sigs_true, Exposures))
 
-a,b,c = simulate_counts(4, 15, loglinear=True)
-print(a)
+
 
 def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
