@@ -99,6 +99,59 @@ def cosine_perm(A,B):
             best_idx = idx
             
     return((best_pe, list(best_idx)))
+
+# This generates a count matrix that is still generated additively. But one signature is log-transformed and
+# there is included an extra signature, that is the product of two randomly sampled signatures.
+# This assumes that there is 3 or more signatures, and that the zero-inflation makes so that a patient can have a
+# have contribution from a signature from the interaction with another signature, without having contribution form
+# the main signature. ISSUE: It is still generated linearly.
+def simulate_nonlinear(nsigs, npatients):
+  #Arrange COSMIC to be the same ordering as count data
+  #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
+  COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
+  context = COSMIC.index
+  mutation = [s[2:5] for s in context]
+  COSMIC['mutation'] = mutation
+  COSMIC = COSMIC.sort_values('mutation')
+  mutation = COSMIC['mutation']
+  context = COSMIC.index
+  COSMIC = COSMIC.drop('mutation', axis = 1)
+
+  patients = ['Patient' + str(i) for i in range(1,(npatients+1))]
+  
+  sigs = COSMIC.sample(nsigs, axis = 1)
+  sigs_true = sigs.copy()
+  log_sig = sigs.iloc[:,0]
+  log_sig = np.log(log_sig.replace(0, 1e-7))
+  prod_sig = np.multiply(sigs.iloc[:,1], sigs.iloc[:,2])
+  prod_sig = prod_sig/np.sum(prod_sig)
+  prod_name = sigs.columns[1] + "*" + sigs.columns[2]
+  sigs.iloc[:,0] = log_sig
+  sigs[prod_name] = prod_sig
+  sig_names = sigs.columns
+
+  def generate_exposure(nexp):
+    zinf = np.random.binomial(n = 1, p = 0.09, size = nexp)>0 
+    not_zinf = [not z for z in zinf]
+    #parametrized negative binomial with mean 600
+    total_muts = np.random.negative_binomial(p =1- 300/301, n = 2, size = 1)
+    distribution = np.random.dirichlet(alpha=[1]*nexp, size= 1)
+
+    res = (np.multiply(not_zinf, distribution)*total_muts).tolist()
+    #because it somehow made a list of lists
+    return(res[0])
+  E = [generate_exposure(nsigs + 1) for _ in range(npatients)]
+  Exposures = pd.DataFrame(E).transpose()
+
+  Exposures.columns = patients
+  Exposures.index = sig_names
+  
+  V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
+  V = V
+  V.columns = patients
+  V.index = context
+
+  return((V, sigs_true, Exposures))
 '''
 res = np.round(cosine_perm(A, B)[0],2)
 
