@@ -7,7 +7,7 @@ import scipy.spatial as sp
 from random import sample
 from itertools import permutations
 
-def simulate_counts(nsigs, npatients, loglinear = False):
+def simulate_counts(nsigs, npatients):
   #Arrange COSMIC to be the same ordering as count data
   #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
@@ -22,12 +22,7 @@ def simulate_counts(nsigs, npatients, loglinear = False):
   patients = ['Patient' + str(i) for i in range(1,(npatients+1))]
 
   sig_names = sample(list(COSMIC.columns), nsigs)
-  sigs_true = COSMIC[sig_names]
-  sigs = sigs_true[:]
-  if loglinear:
-      sigs[sigs == 0] = 1e-7
-      # Der er 65 nuller i COSMIC i alt
-      sigs = np.log(sigs)
+  sigs = COSMIC[sig_names]
 
   def generate_exposure(nsigs):
     zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs)>0 
@@ -46,11 +41,51 @@ def simulate_counts(nsigs, npatients, loglinear = False):
   Exposures.index = sig_names
   
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
-  V = np.exp(V) if loglinear else V
   V.columns = patients
   V.index = context
 
-  return((V, sigs_true, Exposures))
+  return((V, sigs, Exposures))
+
+def simulate_mixed(nsigs, npatients):
+  #Arrange COSMIC to be the same ordering as count data
+  #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
+  COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
+  context = COSMIC.index
+  mutation = [s[2:5] for s in context]
+  COSMIC['mutation'] = mutation
+  COSMIC = COSMIC.sort_values('mutation')
+  mutation = COSMIC['mutation']
+  context = COSMIC.index
+  COSMIC = COSMIC.drop('mutation', axis = 1)
+
+  patients = ['Patient' + str(i) for i in range(1,(npatients+1))]
+
+  sig_names = sample(list(COSMIC.columns), nsigs)
+  sigs = COSMIC[sig_names]
+
+  def generate_patient(nsigs):
+    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs +1)>0 
+    not_zinf = [not z for z in zinf]
+    #parametrized negative binomial with mean 600
+    total_muts = np.random.negative_binomial(p =1- 300/301, n = 2, size = 1)
+    distribution = np.random.dirichlet(alpha=[1]*(nsigs+1), size = 1)
+    
+    #because it somehow made a list of lists
+    exp = (np.multiply(not_zinf, distribution)*total_muts).tolist()[0]
+
+    mix_idx = sample(sig_names, 2)
+    mix_sig = COSMIC[mix_idx].dot([0.35, 0.65])#0.35*COSMIC[mix_idx[0]] + 0.65*COSMIC[mix_idx[1]]
+
+    sigs_x = np.concatenate((sigs, mix_sig.to_numpy().reshape((96,1))), axis = 1)
+    res = sigs_x.dot(exp)
+    return(np.round(res, 0))
+  V = pd.DataFrame([generate_patient(nsigs) for _ in range(npatients)]).T
+  V.columns = patients
+  V.index = context
+
+  return((V, sigs))
+
+
 
 
 
