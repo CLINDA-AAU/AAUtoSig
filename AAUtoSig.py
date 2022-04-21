@@ -8,14 +8,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-import copy
-from functions import plotsigs, simulate_counts
-#from AAUtoSig_init import AAUtoSig, train_AAUtoSig
-from NMFAE_init import NMFAE, train_NMFAE
+from AAUtoSig_init import train_AAUtoSig
+from functions import cosine_perm, plotsigs, simulate_counts
 
-from sklearn.model_selection import KFold
 
-mc,_,_ = simulate_counts(5, 1000)
+mc, sigs,_ = simulate_counts(5, 1000)
 
 mc = mc.transpose()
 context = mc.columns
@@ -24,40 +21,59 @@ mutation = [s[2:5] for s in context]
 x_train = mc.sample(frac=0.8)
 x_test = mc.drop(x_train.index)
 
-lr = [0.001,0.005, 0.01, 0.05, 0.1, 0.2, 0.3]
-nsigs = list(range(2,11))
+class AAUtoSig(torch.nn.Module):
+    def __init__(self, dim1):
+        super().__init__()
 
-kf = KFold(n_splits=5)
+        
+        # Building an linear encoder
+        # 96 => dim1 => dim2
+        self.enc1 = torch.nn.Linear(96, 200, bias = False)
+        self.enc2 = torch.nn.Linear(200, 150, bias = False)
+        self.enc3 = torch.nn.Linear(150, 100, bias = False)
+        self.enc4 = torch.nn.Linear(100, 50, bias = False)
+        self.enc5  = torch.nn.Linear(50, dim1, bias = False)
 
-cv_res = []
-for n in nsigs:
-    for r in lr:
-        out_err = []
-        for train, test in kf.split(x_train):
-            model = NMFAE(dim1=n)
 
-            loss_function = torch.nn.MSELoss(reduction='mean')
-
-            optimizer = torch.optim.Adam(model.parameters(), lr = r)
-
-            train_NMFAE(epochs = 200, 
-               model = model, 
-               x_train = pd.DataFrame(x_train).iloc[train,:], 
-               loss_function = loss_function, 
-               optimizer = optimizer,
-               batch_size = 16)
-
-            cv_test_tensor = torch.tensor(pd.DataFrame(x_train).iloc[test,:].values, 
-                                            dtype = torch.float32)
-
-            cv_fit = model(cv_test_tensor)
-            out_err.append(float(loss_function(cv_fit,cv_test_tensor).detach().numpy()))
-
-        cv_res.append([n, r, np.mean(out_err)])
+          
+        # Building an linear decoder 
+        # dim2 => dim1 => 96
+        self.dec2 = torch.nn.Linear(dim1, 96, bias = False)
             
 
-print(cv_res)
+    def forward(self, x):
+        x = F.softplus(self.enc1(x))
+        x = F.softplus(self.enc2(x))
+        x = F.softplus(self.enc3(x))
+        x = F.softplus(self.enc4(x))
+        x = F.softplus(self.enc5(x))
+        x = F.softplus(self.dec2(x))
+        return x
+        
+    # Model Initialization
+        
 
+model = AAUtoSig(5)
+
+loss_function = torch.nn.MSELoss(reduction='mean')
+
+optimizer = torch.optim.Adam(model.parameters(),
+                              lr = 1e-3)#,
+                             #weight_decay = 1e-8)
+
+train_AAUtoSig(epochs = 500, model = model, x_train = mc, loss_function = loss_function, 
+                optimizer = optimizer, batch_size = 16)
+
+sigs_est = model.dec2.weight.data
+sigs_est = pd.DataFrame(sigs_est.numpy())
+trinucleotide = sigs.index
+mutation =  [s[2:5] for s in trinucleotide]
+
+idx = cosine_perm(sigs, sigs_est)[1]
+sigs_est = sigs_est[idx]
+
+plotsigs(trinucleotide, mutation, sigs.to_numpy(), 5, "True signatures")  
+plotsigs(trinucleotide, mutation, sigs_est.to_numpy(), 5, "Estimated signatures")  
 
 
 
