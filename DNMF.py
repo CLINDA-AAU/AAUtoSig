@@ -106,7 +106,8 @@ def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
 data, sigs, _ = simulate_counts(5, 600)
 data = data.transpose()
 
-model = DNMF(5,6)
+#I think this model depends on the number of observations being divisible by batch size
+model = DNMF(5,batch_size = 6)
 
 loss_function = torch.nn.MSELoss(reduction='mean')
 
