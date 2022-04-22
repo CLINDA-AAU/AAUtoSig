@@ -76,6 +76,3 @@ def optuna_tune(X, nsig):
     trial = study.best_trial
 
     return trial.params
-
-X,_,_ = simulate_counts(5, 600)
-optuna_tune(X.transpose(), 5)
