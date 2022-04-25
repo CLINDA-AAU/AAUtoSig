@@ -6,51 +6,51 @@ import torch.nn.functional as F
 
 import pandas as pd
 import numpy as np
-from functions import simulate_counts, plotsigs
+import matplotlib.pyplot as plt
+from functions import simulate_mixedLittle, plotsigs
 
 class DNMF(torch.nn.Module):
-    def __init__(self, nsig, batch_size, kernel_size = 3, stride = 1): #tri-gams
+    def __init__(self, nsig): 
         super().__init__()
     	
-        self.fc_dim = int(((96-kernel_size)/stride + 1 - kernel_size)/stride + 1)
-
         self.encoder = torch.nn.Sequential(
             # Building an encoder
-            torch.nn.Conv1d(batch_size, 3, kernel_size = kernel_size),
-            torch.nn.BatchNorm1d(3, affine= False),
-            torch.nn.ReLU(),
-            torch.nn.Conv1d(3, 6, kernel_size = kernel_size),
-            torch.nn.BatchNorm1d(6, affine= False),
-            torch.nn.ReLU()
+            torch.nn.Linear(96, 75),
+            torch.nn.ELU(),
+            torch.nn.Linear(75, 50),
+            torch.nn.ELU(),
+            torch.nn.Linear(50, 25),
+            torch.nn.ELU(),
+            torch.nn.Linear(25, 10),
+            torch.nn.ELU()
 
         )
-        self.expand_to_NMF = torch.nn.Linear(6*self.fc_dim, 96)
+        self.expand_to_NMF = torch.nn.Linear(10, 96)
         #NMF part 
         # 272 => 15 => 272
         self.NMF1 = torch.nn.Linear(96, nsig, bias = False)
 
         self.NMF2 = torch.nn.Linear(nsig, 96, bias = False)
 
-        self.decrease_to_conv = torch.nn.Linear(96, 6*96)#if we begin at 6*96 we will end at fc_dim,
-                                                            #torch.nn.BatchNorm1d(6*self.fc_dim)  #this one is the issue
+        self.decrease_to_conv = torch.nn.Linear(96, 10)
         self.decoder = torch.nn.Sequential(
             # Building a decoder 
-            torch.nn.Conv1d(6, 3, kernel_size = kernel_size),
-            torch.nn.BatchNorm1d(3, affine= False),
-            torch.nn.ReLU(),
-            torch.nn.Conv1d(3, batch_size, kernel_size = kernel_size),
-            torch.nn.Linear(self.fc_dim, 96)
+            torch.nn.Linear(10, 25),
+            torch.nn.ELU(),
+            torch.nn.Linear(25, 50),
+            torch.nn.ELU(),
+            torch.nn.Linear(50, 75),
+            torch.nn.ELU(),
+            torch.nn.Linear(75, 96),
+            torch.nn.ELU()
         )            
 
     def forward(self, x):
-        x = x.unsqueeze(0)
         x = self.encoder(x)
-        x = x.view(-1, 6*self.fc_dim)
         x = self.expand_to_NMF(x)
         x = self.NMF1(x)
         x = self.NMF2(x)
         x = self.decrease_to_conv(x)
-        x = x.view(-1, 6, 96) #if we begin at 6*96 we will end at fc_dim
         x = self.decoder(x)
         return x
         
@@ -74,20 +74,20 @@ def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
                                               batch_size=batch_size, 
                                               shuffle=True)
     
-
+    loss_list = []
     for epoch in range(epochs):
-        model.train()
 
-        if int(round(100*epoch/epochs,0)) % 10 == 0:
+        if int(round(1000*epoch/epochs,0)) % 100 == 0:
             print(str(round(100*epoch/epochs,0)) + "%" )
-            
-
+    
+        model.train()
         for data in trainloader:
           # Output of Autoencoder
           reconstructed = model(data).view(-1,96)
                 
           # Calculating the loss function
           loss = loss_function(reconstructed, data)#.view(-1,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+
           
           # The gradients are set to zero,
           # the the gradient is computed and stored.
@@ -98,14 +98,14 @@ def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
         with torch.no_grad():
             for p in model.NMF2.weight: #These are the inverse signatures and signatures
                 p.clamp_(min = 0) #fix this pls
-
+    
     return model
 
-data, sigs, _ = simulate_counts(5, 600)
+data, sigs = simulate_mixedLittle(5, 600)
 data = data.transpose()
 
 #I think this model depends on the number of observations being divisible by batch size
-model = DNMF(5,batch_size = 6)
+model = DNMF(5)
 
 loss_function = torch.nn.MSELoss(reduction='mean')
 
@@ -113,7 +113,7 @@ optimizer = torch.optim.Adam(model.parameters(),
                               lr = 1e-3)#,
                              #weight_decay = 1e-8)
 
-train_DNMF(epochs = 66, model = model, x_train = data, loss_function = loss_function, optimizer = optimizer, batch_size = 6)
+train_DNMF(epochs = 500, model = model, x_train = data, loss_function = loss_function, optimizer = optimizer, batch_size = 16)
 #print(model.NMF2.weight)
 
 sigs_est = model.NMF2.weight.data
