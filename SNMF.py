@@ -11,7 +11,7 @@ import torch.optim as optim
 import math
 from torch.utils.data import DataLoader, Dataset
 import cvxpy as cp
-from functions import simulate_counts
+from functions import simulate_counts, plotsigs
 
 ''' Faktoriser datamatrix ud i abundances A og endpoints M 
     Et forward pass returnerer alle iterationer af M og A afhængig af de foregående iterationer af  M og A.
@@ -36,7 +36,10 @@ class UnmixingUtils:
             temp = A_est[:, i]
             temp = np.tile(temp, (R, 1)).T
             sadMat[i, :] = np.arccos(
-                sum(temp * self.A, 0) / (np.sqrt(np.sum(temp * temp, 0)+1e-4) * np.sqrt(np.sum(self.A * self.A, 0))+1e-4))
+                # changed the first sum to np.sum because I believe that the the use of base python summation is was an error based on the context
+                # all other summation is np sums and the second argument in sum determines at what value the summation should begin, and sums begin at zero 
+                # pr. definition. In np.sum the second argument determines over what axis summation should begin
+                np.sum(temp * self.A, 0) / (np.sqrt(np.sum(temp * temp, 0) + 1e-4) * np.sqrt(np.sum(self.A * self.A, 0))+1e-4))
         sadMat = sadMat.T
         temp = np.zeros([1, R])
         sor = p[0, :]
@@ -53,7 +56,7 @@ class UnmixingUtils:
     def hyperRMSE(self, S_est, sor):
         N = np.size(self.S, 0)
         S_est = S_est[:, sor]
-        rmse = self.S - S_est
+        rmse = self.S - S_est.T
         rmse = rmse * rmse
         rmse = np.mean(np.sqrt(np.sum(rmse, 0) / N))
         return rmse
@@ -156,7 +159,7 @@ class L1NMF_Net(nn.Module):
 
 #I think this model depends on the number of observations being divisible by batch size
 
-data, sigs, exp = simulate_counts(10, 600)
+data, sigs, exp = simulate_counts(5, 600)
 
 #net = L1NMF_Net(2, M = exp.transpose(), A = sigs)
 #print(net)
@@ -188,8 +191,7 @@ def train(lrD,layerNum, lr, train_data, nrtrain, A0, S0, X, A, s):
 
     running_loss = 0.0
     last_loss=1
-    for epoch_i in range(100):
-
+    for epoch_i in range(500):
         for data_batch in trainloader:
             #batch_label er abundences
             batch_x, batch_label = data_batch
@@ -206,24 +208,33 @@ def train(lrD,layerNum, lr, train_data, nrtrain, A0, S0, X, A, s):
             model.p[i].data.copy_(t1)
             running_loss += loss.item()
         temp = abs(running_loss - last_loss) / last_loss
-        output_data = 'train===epoch: %d, loss:  %.5f, tol: %.6f\n' % (epoch_i, running_loss, temp)
-        print(output_data)
+        if int(round(100*epoch_i/500,0)) % 10 == 0:    
+            output_data = 'train===epoch: %d, loss:  %.5f, tol: %.6f\n' % (epoch_i, running_loss, temp)
+            print(output_data)
         last_loss=running_loss
         running_loss = 0.0
 
     util = UnmixingUtils(A, s.T)
-    out1, out2 = model(torch.FloatTensor(X))#, A0, S0.T)
+    out1, out2 = model(torch.FloatTensor(X.T))#, A0, S0.T)
     Distance, meanDistance, sor = util.hyperSAD(out1[-1].detach().numpy())
     rmse = util.hyperRMSE(out2[-1].T.detach().numpy(), sor)
     output_data = 'Res: SAD: %.5f RMSE:  %.5f' % (meanDistance, rmse)
     print(output_data)
-    return meanDistance,rmse
+    return meanDistance,rmse,out1, out2
 
-layerNum =9
+layerNum = 9
 lr = 2
 lrD = 1e-6
 # For SNR=15
 # lr = 0.3
 # lrD = 1e-8
-train(lrD=lrD, lr=lr, layerNum=layerNum, train_data=data.transpose(),  nrtrain=600, A0=sigs, S0=exp.T,
+_,_,a,b = train(lrD=lrD, lr=lr, layerNum=layerNum, train_data=data.transpose(),  nrtrain=600, A0=sigs, S0=exp.T,
         X=data, A=sigs, s=exp.T)
+
+sigs_est = pd.DataFrame(a[-1].detach().numpy())
+trinucleotide = sigs.index
+mutation =  [s[2:5] for s in trinucleotide]
+
+
+plotsigs(trinucleotide, mutation, sigs.to_numpy(), 5, "True signatures")  
+plotsigs(trinucleotide, mutation, sigs_est.to_numpy(), 5, "Estimated signatures")  
