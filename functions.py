@@ -93,14 +93,19 @@ def simulate_mixedLittle(nsigs, npatients):
 
     return(exp)
 
+
   E = pd.DataFrame([generate_exp(nsigs) for _ in range(npatients)]).T
 
   V = pd.DataFrame(np.round(np.dot(sigs, E),0))
   V.columns = patients
   V.index = context
 
-  return((V, sigs))
+  sigs = pd.DataFrame(sigs[:, :-1])
+  sigs.columns = sig_names
+  sigs.index = context
 
+  return((V, sigs))
+ 
 
 
 def simulate_mixedBIG(nsigs, npatients):
