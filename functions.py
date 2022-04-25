@@ -9,7 +9,6 @@ from itertools import permutations
 
 def simulate_counts(nsigs, npatients):
   #Arrange COSMIC to be the same ordering as count data
-  #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
   context = COSMIC.index
   mutation = [s[2:5] for s in context]
@@ -46,9 +45,66 @@ def simulate_counts(nsigs, npatients):
 
   return((V, sigs, Exposures))
 
-def simulate_mixed(nsigs, npatients):
+def simulate_mixedLittle(nsigs, npatients):
   #Arrange COSMIC to be the same ordering as count data
-  #COSMIC = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\COSMIC_SIGNATURES\COSMIC_v3.2_SBS_GRCh37.txt', sep='\t', index_col=0)
+  COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
+  context = COSMIC.index
+  mutation = [s[2:5] for s in context]
+  COSMIC['mutation'] = mutation
+  COSMIC = COSMIC.sort_values('mutation')
+  mutation = COSMIC['mutation']
+  context = COSMIC.index
+  COSMIC = COSMIC.drop('mutation', axis = 1)
+
+  patients = ['Patient' + str(i) for i in range(1,(npatients + 1))]
+
+  sig_names = sample(list(COSMIC.columns), nsigs)
+  sigs = COSMIC[sig_names]
+
+  mix_idx = sample(range(nsigs), 2)
+  mix_sig = np.log(3*(COSMIC.iloc[:,mix_idx].dot([1, 1])) + 1) #a steep log that has root in zero
+  sigs = np.concatenate((sigs, mix_sig.to_numpy().reshape((96, 1))), axis = 1)
+
+
+  def generate_exp(nsigs):
+    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
+    not_zinf = [not z for z in zinf]
+    # parametrized negative binomial with mean 600. This is not gonna be far from the mean of the total counts
+    # as there is two points where some exposures are set to 0
+    total_muts = np.random.negative_binomial(p = 1 - 400/401, n = 2, size = 1)
+    distribution = np.random.dirichlet(alpha = [1]*(nsigs + 1), size = 1)
+    
+    #because it somehow made a list of lists
+    exp = (np.multiply(not_zinf, distribution)*total_muts).tolist()[0]
+
+
+    # den transformerede signatur er, hvis de begge to er aktive i genomet. Hvis en af de udvalgte ikke
+    # er til stede i genomet får man ikke den ikke-lineære effekt. Så får man bare den lineære effekt af
+    # at have den, der er til stede.
+    # mix_sig er på den nsigs plads i signaturmatricen idet der nu er nsigs + 1 signaturer, men python 
+    # indekserer fra 0. 
+    if any([exp[i] == 0 for i in mix_idx]): 
+      exp[nsigs] = 0
+    # hvis begge signaturer fra der indgår i ikke-lineariteten er til stede sættes deres exposure til 0
+    # da kommer de kun til udtryk i mixet
+    else:
+      exp[mix_idx[0]] = 0
+      exp[mix_idx[1]] = 0
+
+    return(exp)
+
+  E = pd.DataFrame([generate_exp(nsigs) for _ in range(npatients)]).T
+
+  V = pd.DataFrame(np.round(np.dot(sigs, E),0))
+  V.columns = patients
+  V.index = context
+
+  return((V, sigs))
+
+
+
+def simulate_mixedBIG(nsigs, npatients):
+  #Arrange COSMIC to be the same ordering as count data
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
   context = COSMIC.index
   mutation = [s[2:5] for s in context]
@@ -64,19 +120,19 @@ def simulate_mixed(nsigs, npatients):
   sigs = COSMIC[sig_names]
 
   def generate_patient(nsigs):
-    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs +1)>0 
+    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
     not_zinf = [not z for z in zinf]
     #parametrized negative binomial with mean 600
-    total_muts = np.random.negative_binomial(p =1- 300/301, n = 2, size = 1)
-    distribution = np.random.dirichlet(alpha=[1]*(nsigs+1), size = 1)
+    total_muts = np.random.negative_binomial(p = 1 - 300/301, n = 2, size = 1)
+    distribution = np.random.dirichlet(alpha = [1]*(nsigs+1), size = 1)
     
     #because it somehow made a list of lists
     exp = (np.multiply(not_zinf, distribution)*total_muts).tolist()[0]
 
     mix_idx = sample(sig_names, 2)
-    mix_weight = np.random.dirichlet(alpha = [1 , 1], size = 1).T
-    mix_sig = COSMIC[mix_idx].dot(mix_weight)#0.35*COSMIC[mix_idx[0]] + 0.65*COSMIC[mix_idx[1]]
+    mix_sig = np.log(3*(COSMIC[mix_idx].dot([1,1])) + 1) #a steep log that has root in zero
 
+    sigs_x = sigs.drop(mix_idx, axis = 1)
     sigs_x = np.concatenate((sigs, mix_sig.to_numpy().reshape((96,1))), axis = 1)
     res = sigs_x.dot(exp)
     return(np.round(res, 0))
@@ -86,8 +142,6 @@ def simulate_mixed(nsigs, npatients):
 
   return((V, sigs))
 
-
-print(simulate_mixed(5, 10))
 
 
 def plotsigs(context, mutation, signatures, nsigs, title):
