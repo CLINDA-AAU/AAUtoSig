@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from functions import simulate_mixedLittle, plotsigs
+from functions import simulate_counts, simulate_mixedLittle, plotsigs
 
 class DNMF(torch.nn.Module):
     def __init__(self, nsig): 
@@ -47,20 +47,14 @@ class DNMF(torch.nn.Module):
 
     def forward(self, x):
         x = self.encoder(x)
-        x = self.expand_to_NMF(x)
-        x = self.NMF1(x)
-        x = self.NMF2(x)
-        x = self.decrease_to_conv(x)
+        in_nmf = F.relu(self.expand_to_NMF(x))
+        x = self.NMF1(in_nmf)
+        out_nmf = self.NMF2(x)
+        x = self.decrease_to_conv(out_nmf)
         x = self.decoder(x)
-        return x
+        return x, in_nmf, out_nmf
         
     # Model Initialization
-
-#net = DNMF(5, batch_size=2)
-
-#dat = torch.tensor([np.ones(96), np.ones(96)], dtype = torch.float)
-
-#asd = net(dat)
 
 
 def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
@@ -74,7 +68,6 @@ def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
                                               batch_size=batch_size, 
                                               shuffle=True)
     
-    loss_list = []
     for epoch in range(epochs):
 
         if int(round(1000*epoch/epochs,0)) % 100 == 0:
@@ -83,10 +76,12 @@ def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
         model.train()
         for data in trainloader:
           # Output of Autoencoder
-          reconstructed = model(data).view(-1,96)
+          reconstructed, in_nmf, out_nmf = model(data)#.view(-1,96)
                 
           # Calculating the loss function
-          loss = loss_function(reconstructed, data)#.view(-1,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+          loss = loss_function(reconstructed, data) + loss_function(in_nmf, out_nmf)
+          #add nmf loss to loss function
+          #.view(-1,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
 
           
           # The gradients are set to zero,
@@ -101,11 +96,11 @@ def train_DNMF(epochs, model, x_train, loss_function, optimizer, batch_size):
     
     return model
 
-data, sigs = simulate_mixedLittle(5, 600)
+data, sigs, _ = simulate_counts(5, 3000)
 data = data.transpose()
 
-#I think this model depends on the number of observations being divisible by batch size
 model = DNMF(5)
+
 
 loss_function = torch.nn.MSELoss(reduction='mean')
 
@@ -124,3 +119,10 @@ mutation =  [s[2:5] for s in trinucleotide]
 
 plotsigs(trinucleotide, mutation, sigs.to_numpy(), 5, "True signatures")  
 plotsigs(trinucleotide, mutation, sigs_est.to_numpy(), 5, "Estimated signatures")  
+
+'''
+diff = (in_nmf - x).detach().numpy()
+means = np.mean(diff*diff, axis = 0)
+plt.bar(range(len(means)), means)
+plt.show()
+'''
