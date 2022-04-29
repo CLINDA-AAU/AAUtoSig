@@ -59,8 +59,6 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
 
     for epoch in range(epochs):
 
-        if int(round(100*epoch/epochs,0)) % 10 == 0:
-            print(str(round(100*epoch/epochs,0)) + "%" )
             
         model.train()
         
