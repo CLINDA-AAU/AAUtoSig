@@ -1,19 +1,15 @@
 #from tabnanny import verbose
+from tabnanny import verbose
 import numpy as np
 import torch
 import pandas as pd
 import optuna
+optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 from sklearn import model_selection
-from NMFAE_init import NMFAE, train_NMFAE
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
-from functools import partial 
-from skopt import space
-from skopt import gp_minimize
-from functions import simulate_counts, cosine_perm
-from sklearn.decomposition import NMF
+
 import torch.optim as optim
-from optuna.trial import TrialState
 
 
 #takes a data matrix nX96 and returns a dictionary of optimal hyperparameters
@@ -71,7 +67,7 @@ def optuna_tune(X, nsig):
 
 
     study = optuna.create_study(direction="minimize")
-    study.optimize(objective, n_trials=70, timeout=600)
+    study.optimize(objective, n_trials=50, timeout=600)
 
     trial = study.best_trial
 
