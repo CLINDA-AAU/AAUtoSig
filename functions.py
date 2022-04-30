@@ -7,7 +7,33 @@ import scipy.spatial as sp
 from random import sample
 from itertools import permutations
 
-def simulate_counts(nsigs, npatients):
+
+# Pei et al. uses data on the pentanucleotide from to extract the mutational signatures. There
+# is however, no readily avaliable pentanucleotide mutational signatures in COSMIC.
+# This method 'expands' trinucelotide signatures to pentanucleotide signatures by a 16-fold expan-
+# sion of each datapoint. 
+# Dilemma: We can either expand them unifromly and infer no extra information but a lot of extra
+# parameters in the model, which could be unfarvorable for the model, or the we can expand using 
+# something like a dirichlet and and the expansion may then not reflect something biologically
+# accurate. This may also be unfarvorable for the model, or it may not matter.
+# This model takes a trinucleotide SBS mutational signature, and expands it to a pentanucleotide 
+# from.
+
+def expand_SBS(sig):
+  context = sig.index
+  bases = ['A', 'C', 'G', 'T']
+  penta = [ v + c + h for c in context for v in bases for h in bases]
+  def expand(val):
+    val_exp = val * np.random.dirichlet(alpha = [1]*(16), size = 1)
+    return(val_exp)
+  penta_SBS = [expand(val)[0] for val in sig]
+  res = pd.DataFrame([item for sublist in penta_SBS for item in sublist])
+  res.axis = penta
+  return res
+
+
+
+def simulate_counts(nsigs, npatients, pentanucelotide = False):
   #Arrange COSMIC to be the same ordering as count data
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
   context = COSMIC.index
@@ -23,6 +49,10 @@ def simulate_counts(nsigs, npatients):
   sig_names = sample(list(COSMIC.columns), nsigs)
   sigs = COSMIC[sig_names]
 
+  if pentanucelotide:
+    sigs = pd.DataFrame([list(expand_SBS(sigs.iloc[:,i])[0]) for i in range(nsigs)]).T
+    bases = ['A', 'C', 'G', 'T']
+    penta = [ v + c + h for c in context for v in bases for h in bases]
   def generate_exposure(nsigs):
     zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs)>0 
     not_zinf = [not z for z in zinf]
@@ -38,12 +68,17 @@ def simulate_counts(nsigs, npatients):
 
   Exposures.columns = patients
   Exposures.index = sig_names
+
+  sigs.colums = sig_names
+  sigs.index = penta
   
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
   V.columns = patients
-  V.index = context
+  V.index = penta if pentanucelotide else context
 
   return((V, sigs, Exposures))
+
+
 
 def simulate_mixedLittle(nsigs, npatients):
   #Arrange COSMIC to be the same ordering as count data
@@ -92,7 +127,6 @@ def simulate_mixedLittle(nsigs, npatients):
       exp[mix_idx[1]] = 0
 
     return(exp)
-
 
   E = pd.DataFrame([generate_exp(nsigs) for _ in range(npatients)]).T
 
@@ -194,7 +228,6 @@ def cosine_perm(A,B):
             best_idx = idx
             
     return((best_pe, list(best_idx)))
-
 
 '''
 res = np.round(cosine_perm(A, B)[0],2)
