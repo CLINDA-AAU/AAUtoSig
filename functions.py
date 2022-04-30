@@ -20,15 +20,15 @@ from itertools import permutations
 # from.
 
 def expand_SBS(sig):
-  context = sig.index
-  bases = ['A', 'C', 'G', 'T']
-  penta = [ v + c + h for c in context for v in bases for h in bases]
+  #context = sig.index
+  #bases = ['A', 'C', 'G', 'T']
+  #penta = [ v + c + h for c in context for v in bases for h in bases]
   def expand(val):
     val_exp = val * np.random.dirichlet(alpha = [1]*(16), size = 1)
     return(val_exp)
   penta_SBS = [expand(val)[0] for val in sig]
-  res = pd.DataFrame([item for sublist in penta_SBS for item in sublist])
-  res.axis = penta
+  res = [item for sublist in penta_SBS for item in sublist] #used to be a df
+  #res.axis = penta
   return res
 
 
@@ -50,7 +50,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   sigs = COSMIC[sig_names]
 
   if pentanucelotide:
-    sigs = pd.DataFrame([list(expand_SBS(sigs.iloc[:,i])[0]) for i in range(nsigs)]).T
+    sigs = pd.DataFrame([expand_SBS(sigs.iloc[:,i]) for i in range(nsigs)]).T
     bases = ['A', 'C', 'G', 'T']
     penta = [ v + c + h for c in context for v in bases for h in bases]
   def generate_exposure(nsigs):
@@ -79,8 +79,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   return((V, sigs, Exposures))
 
 
-
-def simulate_mixedLittle(nsigs, npatients):
+def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   #Arrange COSMIC to be the same ordering as count data
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
   context = COSMIC.index
@@ -100,6 +99,10 @@ def simulate_mixedLittle(nsigs, npatients):
   mix_sig = np.log(3*(COSMIC.iloc[:,mix_idx].dot([1, 1])) + 1) #a steep log that has root in zero
   sigs = np.concatenate((sigs, mix_sig.to_numpy().reshape((96, 1))), axis = 1)
 
+  if pentanucleotide:
+    sigs = pd.DataFrame([expand_SBS(sigs[:,i]) for i in range(nsigs + 1)]).T
+    bases = ['A', 'C', 'G', 'T']
+    penta = [ v + c + h for c in context for v in bases for h in bases]
 
   def generate_exp(nsigs):
     zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
@@ -111,7 +114,6 @@ def simulate_mixedLittle(nsigs, npatients):
     
     #because it somehow made a list of lists
     exp = (np.multiply(not_zinf, distribution)*total_muts).tolist()[0]
-
 
     # den transformerede signatur er, hvis de begge to er aktive i genomet. Hvis en af de udvalgte ikke
     # er til stede i genomet får man ikke den ikke-lineære effekt. Så får man bare den lineære effekt af
@@ -132,15 +134,16 @@ def simulate_mixedLittle(nsigs, npatients):
 
   V = pd.DataFrame(np.round(np.dot(sigs, E),0))
   V.columns = patients
-  V.index = context
+  V.index = penta if pentanucleotide else context
 
-  sigs = pd.DataFrame(sigs[:, :-1])
+  sigs = pd.DataFrame(sigs.iloc[:, :-1])
   sigs.columns = sig_names
-  sigs.index = context
+  sigs.index = penta if pentanucleotide else context
 
   return((V, sigs))
  
-
+a,b = simulate_mixedLittle(4, 10, pentanucleotide = True)
+print(b)
 
 def simulate_mixedBIG(nsigs, npatients):
   #Arrange COSMIC to be the same ordering as count data
