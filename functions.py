@@ -70,7 +70,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   Exposures.index = sig_names
 
   sigs.colums = sig_names
-  sigs.index = penta
+  sigs.index = context if (not pentanucelotide) else penta
   
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
   V.columns = patients
