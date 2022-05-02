@@ -162,7 +162,7 @@ def optuna_AE(X):
         nsig = trial.suggest_int('nsig', 2, 15)
         lr = trial.suggest_float('lr',1e-5, 1e-1, log=True)
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
-        optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
+        optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop"])
         
         res = MSE_AE(X, nsig, lr, optimizer_name, batch_size)
         
@@ -192,7 +192,7 @@ asd = np.array([rank_analysis(200, 5) for _ in range(2)])
 result = pd.DataFrame(asd)
 result.columns = ["skopt_NMF", "optuna_NMF", "skopt_AE", "optuna_AE"]
 
-outfile = "Q:\AUH-HAEM-FORSK-MutSigDLBCL222\article_1\output\rank_analysis" + str(date.today()) + ".png"
+outfile = "Q:\\AUH-HAEM-FORSK-MutSigDLBCL222\\article_1\\output\\rank_analysis_" + str(date.today()) + ".png"
 
 plt.hist(result, label  = result.columns)
 plt.title("Number of signatures found in each tuning")

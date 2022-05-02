@@ -54,8 +54,9 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
     bases = ['A', 'C', 'G', 'T']
     penta = [ v + c + h for c in context for v in bases for h in bases]
   def generate_exposure(nsigs):
-    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs)>0 
-    not_zinf = [not z for z in zinf]
+    #zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
+    #not_zinf = [not z for z in zinf]
+    not_zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1) == 0 
     #parametrized negative binomial with mean 600
     total_muts = np.random.negative_binomial(p =1- 300/301, n = 2, size = 1)
     distribution = np.random.dirichlet(alpha=[1]*nsigs, size= 1)
@@ -105,8 +106,9 @@ def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
     penta = [ v + c + h for c in context for v in bases for h in bases]
 
   def generate_exp(nsigs):
-    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
-    not_zinf = [not z for z in zinf]
+    #zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
+    #not_zinf = [not z for z in zinf]
+    not_zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1) == 0 
     # parametrized negative binomial with mean 600. This is not gonna be far from the mean of the total counts
     # as there is two points where some exposures are set to 0
     total_muts = np.random.negative_binomial(p = 1 - 400/401, n = 2, size = 1)
@@ -160,8 +162,9 @@ def simulate_mixedBIG(nsigs, npatients):
   sigs = COSMIC[sig_names]
 
   def generate_patient(nsigs):
-    zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
-    not_zinf = [not z for z in zinf]
+    #zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
+    #not_zinf = [not z for z in zinf]
+    not_zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1) == 0 
     #parametrized negative binomial with mean 600
     total_muts = np.random.negative_binomial(p = 1 - 300/301, n = 2, size = 1)
     distribution = np.random.dirichlet(alpha = [1]*(nsigs+1), size = 1)
