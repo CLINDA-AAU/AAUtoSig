@@ -48,7 +48,6 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
 
   sig_names = sample(list(COSMIC.columns), nsigs)
   sigs = COSMIC[sig_names]
-
   if pentanucelotide:
     sigs = pd.DataFrame([expand_SBS(sigs.iloc[:,i]) for i in range(nsigs)]).T
     bases = ['A', 'C', 'G', 'T']
@@ -70,16 +69,14 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   Exposures.columns = patients
   Exposures.index = sig_names
 
-  sigs.colums = sig_names
+  sigs.columns = sig_names
   sigs.index = context if (not pentanucelotide) else penta
-  
+
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
   V.columns = patients
   V.index = context if (not pentanucelotide) else penta
 
   return((V, sigs, Exposures))
-a,b,c = simulate_counts(5, 100)
-print(a)
 
 def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   #Arrange COSMIC to be the same ordering as count data
