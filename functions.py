@@ -56,7 +56,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   def generate_exposure(nsigs):
     #zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1)>0 
     #not_zinf = [not z for z in zinf]
-    not_zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs + 1) == 0 
+    not_zinf = np.random.binomial(n = 1, p = 0.09, size = nsigs) == 0 
     #parametrized negative binomial with mean 600
     total_muts = np.random.negative_binomial(p =1- 300/301, n = 2, size = 1)
     distribution = np.random.dirichlet(alpha=[1]*nsigs, size= 1)
@@ -78,7 +78,8 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   V.index = context if (not pentanucelotide) else penta
 
   return((V, sigs, Exposures))
-
+a,b,c = simulate_counts(5, 100)
+print(a)
 
 def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   #Arrange COSMIC to be the same ordering as count data
@@ -156,7 +157,7 @@ def simulate_mixedBIG(nsigs, npatients):
   context = COSMIC.index
   COSMIC = COSMIC.drop('mutation', axis = 1)
 
-  patients = ['Patient' + str(i) for i in range(1,(npatients+1))]
+  patients = ['Patient' + str(i) for i in range(1, (npatients + 1))]
 
   sig_names = sample(list(COSMIC.columns), nsigs)
   sigs = COSMIC[sig_names]
