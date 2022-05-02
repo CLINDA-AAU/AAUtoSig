@@ -74,7 +74,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   
   V = pd.DataFrame(np.round(np.dot(sigs, Exposures),0))
   V.columns = patients
-  V.index = penta if pentanucelotide else context
+  V.index = context if (not pentanucelotide) else penta
 
   return((V, sigs, Exposures))
 
@@ -141,9 +141,7 @@ def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   sigs.index = penta if pentanucleotide else context
 
   return((V, sigs))
- 
-a,b = simulate_mixedLittle(4, 10, pentanucleotide = True)
-print(b)
+
 
 def simulate_mixedBIG(nsigs, npatients):
   #Arrange COSMIC to be the same ordering as count data
