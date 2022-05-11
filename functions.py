@@ -32,7 +32,6 @@ def expand_SBS(sig):
   return res
 
 
-
 def simulate_counts(nsigs, npatients, pentanucelotide = False):
   #Arrange COSMIC to be the same ordering as count data
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
@@ -136,7 +135,7 @@ def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   V.columns = patients
   V.index = penta if pentanucleotide else context
 
-  sigs = pd.DataFrame(sigs.iloc[:, :-1])
+  sigs = pd.DataFrame(sigs).iloc[:, :-1]
   sigs.columns = sig_names
   sigs.index = penta if pentanucleotide else context
 
@@ -190,13 +189,16 @@ def plotsigs(context, mutation, signatures, nsigs, title):
                 'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
     labels = list(colors.keys())
     handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+    for i in range(nsigs): signatures[:,i] = signatures[:,i]/np.sum(signatures[:,i])
+    max_val = signatures.max().max()
     for i in range(nsigs):
         plt.subplot(nsigs,1, (i+1))
         #plt.figure(figsize=(20,7))
         plt.bar(x = context, 
-                height =  signatures[:,i]/np.sum(signatures[:,i]), 
+                height =  signatures[:,i], 
                 color = [colors[i] for i in mutation])
         plt.xticks([])
+        plt.ylim( [ 0, max_val ] ) 
         if i == 0:
             plt.title(title)
     #plt.legend(handles,labels)
