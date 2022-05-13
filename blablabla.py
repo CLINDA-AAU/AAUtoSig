@@ -34,8 +34,8 @@ def deepNMF(layer_sizes, X_mat):
         for _ in range(50):
             #A_bar = np.stack((A, A_vec))
             #X_bar = np.stack((X, X_vec))
-            A = A*(X@S.T)/((A@S)@S.T)
-            S = S*(A.T@X)/((A.T@A)@S)
+            A = A*(X@S.T)/np.clip(((A@S)@S.T), a_min = 1e-3, a_max = np.inf)
+            S = S*(A.T@X)/np.clip(((A.T@A)@S), a_min = 1e-3, a_max = np.inf)
         A_list.append(A)
         S_list.append(S)
     A_list.append(np.eye(nsig))
@@ -51,8 +51,16 @@ def deepNMF(layer_sizes, X_mat):
                 for mat in A_list[0:l]: psi_lm1 = psi_lm1@mat
                 for mat in A_list[-(layers-l):]: S_tildel = S_tildel@mat
             S_tildel = S_tildel @ S_list[-1]
-    
-            A_list[l] = A_list[l]*(psi_lm1.T@X_np@S_tildel.T)/(psi_lm1.T@psi_lm1@A_list[l]@S_tildel@S_tildel.T)
+            print('A_list[l]:' + str(A_list[l].shape))
+            print('psi_lm1.T:' + str(psi_lm1.T.shape))
+            print('X_np:' + str(X_np.T.shape))
+            print('S_tildel.T:' + str(S_tildel.T.shape))
+            print('A_list[l]:' + str(A_list[l].shape))
+            print('A_list[l]:' + str(A_list[l].shape))
+            print('S_tildel.T' + str(S_tildel.T.shape))
+
+
+            A_list[l] = A_list[l]*(psi_lm1.T@X_np@S_tildel.T)/(psi_lm1.T@psi_lm1@A_list[l]@A_list[l]@S_tildel.T)#gennemgå ham her
             S_list[l+1] = S_list[l+1]*((psi_lm1@A_list[l]).T@X_np)/((psi_lm1@A_list[l]).T@psi_lm1@A_list[l]@S_list[l+1])
      
     sigs_gg = pd.DataFrame(A_list[0]@A_list[1]@A_list[2])
