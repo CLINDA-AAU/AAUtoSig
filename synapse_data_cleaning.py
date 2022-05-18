@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 
+
 PCAWG = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\Alexandrov_2020_synapse\WGS_PCAWG_2018_02_09\WGS_PCAWG.96.csv')
 PCAWG.index = [t[0] + '[' + m + ']' + t[2] for (t,m) in zip(PCAWG['Trinucleotide'], PCAWG['Mutation type'])]
 PCAWG = PCAWG.drop(['Trinucleotide', 'Mutation type'], axis = 1)
@@ -26,3 +27,5 @@ PatientID = [c.split('::')[1] for c in TCGA.columns]
 cancer_one_hot_df_TCGA = pd.DataFrame(encoder.fit_transform(np.array(cancers).reshape(-1, 1)))
 cancer_one_hot_df_TCGA.columns = encoder.get_feature_names()
 cancer_one_hot_df_TCGA.index = PatientID
+
+
