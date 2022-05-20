@@ -29,8 +29,7 @@ def deepNMF(layer_sizes, X_mat):
         X = S_list[l]
         A, S = initailize_matrices(X, layer_sizes[l])
         #maybe introduce another stopping criterion
-        #A_vec = 0.5*np.random.dirichlet(alpha = [1]*nsig, size = 1)
-        #X_vec = 0.5*np.random.dirichlet(alpha = [1]*96, size = 1)
+
         for _ in range(50):
             #A_bar = np.stack((A, A_vec))
             #X_bar = np.stack((X, X_vec))
@@ -39,9 +38,7 @@ def deepNMF(layer_sizes, X_mat):
         A_list.append(A)
         S_list.append(S)
     A_list.append(np.eye(nsig))
-    print("Pretraining")
-    print(A_list)
-    print(S_list)
+    
     #fine_tuning 
     for _ in range(50):
         for l in range(layers):
@@ -59,9 +56,6 @@ def deepNMF(layer_sizes, X_mat):
 
             A_list[l] = A_list[l]*(psi_lm1.T@X_np@S_tildel.T)/np.clip((psi_lm1.T@psi_lm1@A_list[l]@S_tildel@S_tildel.T), a_min = 1e-3, a_max = np.inf)
             S_list[l+1] = S_list[l+1]*((psi_lm1@A_list[l]).T@X_np)/np.clip(((psi_lm1@A_list[l]).T@psi_lm1@A_list[l]@S_list[l+1]), a_min = 1e-3, a_max = np.inf)
-            print("fine tuning" + str(l))
-            print(A_list[l])
-            print(S_list[l+1])
      
     sigs_gg = pd.DataFrame(A_list[0]@A_list[1]@A_list[2])
     return(sigs_gg, S_list[-1])
