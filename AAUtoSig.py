@@ -49,11 +49,38 @@ class AAUtoSig(torch.nn.Module):
         x = F.softplus(self.enc5(x))
         x = F.softplus(self.dec2(x))
         return x
+
+
+def plotsigs(context, mutation, signatures, nsigs, title):
+    colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
+                'T>A' : 'y', 'T>C': 'c','T>G' : 'm' , 'WGS': 'k'}
+    context = context.append('WGS')
+    mutation = mutation.append('WGS')
+    labels = list(colors.keys())
+    handles = [plt.Rectangle((0,0),1,1, color=colors[label]) for label in labels]
+    for i in range(nsigs): signatures[:,i] = signatures[:,i]/np.sum(signatures[:,i])
+    max_val = signatures.max().max()
+    for i in range(nsigs):
+        plt.subplot(nsigs,1, (i+1))
+        #plt.figure(figsize=(20,7))
+        plt.bar(x = context, 
+                height =  signatures[:,i], 
+                color = [colors[i] for i in mutation])
+        plt.xticks([])
+        plt.ylim( [ 0, max_val ] ) 
+        if i == 0:
+            plt.title(title)
+    #plt.legend(handles,labels)
+    #plt.xticks(rotation=90)
+    plt.show()
+    
+
+
         
-    # Model Initialization
+# Model Initialization
         
 
-model = AAUtoSig(5)
+model = AAUtoSig(70)
 
 loss_function = torch.nn.MSELoss(reduction='mean')
 
@@ -69,10 +96,6 @@ sigs_est = pd.DataFrame(sigs_est.numpy())
 trinucleotide = sigs.index
 mutation =  [s[2:5] for s in trinucleotide]
 
-idx = cosine_perm(sigs, sigs_est)[1]
-sigs_est = sigs_est[idx]
-
-plotsigs(trinucleotide, mutation, sigs.to_numpy(), 5, "True signatures")  
 plotsigs(trinucleotide, mutation, sigs_est.to_numpy(), 5, "Estimated signatures")  
 
 
