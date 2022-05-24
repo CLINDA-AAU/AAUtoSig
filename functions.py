@@ -32,7 +32,7 @@ def expand_SBS(sig):
   return res
 
 
-def simulate_counts(nsigs, npatients, pentanucelotide = False):
+def simulate_counts(nsigs, npatients, pentanucelotide = False, sig_names = None):
   #Arrange COSMIC to be the same ordering as count data
   COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
   context = COSMIC.index
@@ -45,7 +45,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
 
   patients = ['Patient' + str(i) for i in range(1,(npatients+1))]
 
-  sig_names = sample(list(COSMIC.columns), nsigs)
+  if not sig_names: sig_names = sample(list(COSMIC.columns), nsigs)
   sigs = COSMIC[sig_names]
   if pentanucelotide:
     sigs = pd.DataFrame([expand_SBS(sigs.iloc[:,i]) for i in range(nsigs)]).T
@@ -76,6 +76,7 @@ def simulate_counts(nsigs, npatients, pentanucelotide = False):
   V.index = context if (not pentanucelotide) else penta
 
   return((V, sigs, Exposures))
+
 
 def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   #Arrange COSMIC to be the same ordering as count data
@@ -140,6 +141,7 @@ def simulate_mixedLittle(nsigs, npatients, pentanucleotide = False):
   sigs.index = penta if pentanucleotide else context
 
   return((V, sigs))
+
 
 
 def simulate_mixedBIG(nsigs, npatients):
