@@ -10,8 +10,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-from functions import cosine_perm
+from functions import cosine_perm, plotsigs
 
+COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
+context = COSMIC.index
+mutation = [s[2:5] for s in context]
+COSMIC['mutation'] = mutation
+COSMIC = COSMIC.sort_values('mutation')
+mutation = COSMIC['mutation']
+context = COSMIC.index
+COSMIC = COSMIC.drop('mutation', axis = 1)
 
 PCAWG = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\Alexandrov_2020_synapse\WGS_PCAWG_2018_02_09\WGS_PCAWG.96.csv')
 PCAWG.index = [t[0] + '[' + m + ']' + t[2] for (t,m) in zip(PCAWG['Trinucleotide'], PCAWG['Mutation type'])]
@@ -98,7 +106,7 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
                 p.clamp_(min = 0)
           
     return(model)
-
+'''
 def plotsigs(context, mutation, signatures, nsigs, title):
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
                 'T>A' : 'y', 'T>C': 'c','T>G' : 'm' , 'WGS': 'k'}
@@ -119,7 +127,7 @@ def plotsigs(context, mutation, signatures, nsigs, title):
     #plt.legend(handles,labels)
     plt.xticks(rotation=90)
     plt.show()
-    
+'''    
     
 model = AAUtoSig(78)    
     
@@ -141,15 +149,39 @@ mutation.append('WGS')
 
 sigs_est.index = trinucleotide
 
-plt.hist(sigs_est.iloc[:,96])
+plt.hist(sigs_est.iloc[96,:])
 
-perm = cosine_perm(COSMIC, sigs_est.drop(['WGS']))
+#perm = cosine_perm(sigs_est.drop(['WGS']).T, COSMIC.T)
 
+#sigs_est = sigs_est.iloc[0:96, perm[1]]
 '''
-trinucleotide = total.columns
-mutation =  [s[2:5] for s in trinucleotide[0:96]]
-mutation.append('WGS')
 
-plotsigs(trinucleotide, mutation, sigs_est.to_numpy(), 5, "Estimated signatures")  
+context = COSMIC.index
+mutation = [s[2:5] for s in context]
 
+plotsigs(context, mutation, sigs_est.to_numpy(), 5, "Estimated signatures")  
+plotsigs(context, mutation, COSMIC.to_numpy(), 5, "COSMIC signatures")  
+
+signatures = COSMIC.columns
+res = perm[0]
+
+
+fig, ax = plt.subplots()
+im = ax.imshow(res)
+
+# Show all ticks and label them with the respective list entries
+ax.set_xticks(np.arange(len(signatures)))
+ax.set_xticklabels(signatures)
+ax.set_yticks(np.arange(len(signatures)))
+ax.set_yticklabels(signatures)
+
+
+# Loop over data dimensions and create text annotations.
+for i in range(len(signatures)):
+    for j in range(len(signatures)):
+        text = ax.text(j, i, res[i, j],
+                       ha="center", va="center", color="w")
+
+fig.tight_layout()
+plt.show()
 '''
