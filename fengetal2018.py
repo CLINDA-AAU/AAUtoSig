@@ -59,12 +59,14 @@ def deepNMF(layer_sizes, X_mat):
      
     sigs_gg = pd.DataFrame(A_list[0]@A_list[1]@A_list[2])
     return(sigs_gg, S_list[-1])
-
+'''
 X, true_sigs = simulate_mixedLittle(7, 2000)
 trinucleotide = X.index
 mutation = [t[2:5] for t in trinucleotide]
 sigs_gg, _ = deepNMF([13, 10, 7], X)
+print(sigs_gg.shape)
 perm = cosine_perm(sigs_gg.T,true_sigs.T)
-sigs_gg= sigs_gg[perm[1]]
+sigs_gg = sigs_gg[perm[1]]
 plotsigs(trinucleotide, mutation, sigs_gg.to_numpy(), 7, "wuhu?")
 plotsigs(trinucleotide, mutation, true_sigs.to_numpy(), 7, "True signatures")
+'''
