@@ -8,6 +8,8 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 from sklearn import model_selection
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
+from EGD import EGD_init, train_EGD
+from egpm import EGPM
 
 import torch.optim as optim
 
@@ -17,18 +19,29 @@ def optuna_tune(X, nsig):
 
     def objective(trial):
         #nsig = trial.suggest_int('nsig', 2, 15)
-        lr = trial.suggest_float('lr',1e-5, 1e-1, log=True)
+        lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
+        lr2 = trial.suggest_float('lr2',1e-8, 1e-1, log=True)
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
-        optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
         
         
         #model = NMFAE(nsig)
-        model = AAUtoSig(dim1 = nsig)
+        #model = AAUtoSig(dim1 = nsig)
+        model = EGD_init(nsig)
         kf = model_selection.KFold()
 
         out_err = []
         loss_function = torch.nn.MSELoss(reduction='mean')
-        optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
+
+
+        optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
+
+        optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
+                             norm_per=None, gradient_clipping=True, 
+                             weight_regularization=None, plus_minus=False,
+                             init='bootstrap')
+                            
+
+
         for train, test in kf.split(X):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:]
@@ -41,7 +54,7 @@ def optuna_tune(X, nsig):
                 optimizer = optimizer,
                 batch_size = int(batch_size)
                 )
-            '''
+            
             train_AAUtoSig(
                 epochs = 200, 
                 model = model, 
@@ -50,6 +63,14 @@ def optuna_tune(X, nsig):
                 optimizer = optimizer,
                 batch_size = int(batch_size)
                 )
+            '''
+            train_EGD(epochs = 2000, 
+                model = model, 
+                x_train = x_train, 
+                loss_function = loss_function, 
+                optimizer_enc = optimizer_enc,
+                optimizer_dec = optimizer_dec,
+                batch_size = int(batch_size))
 
             cv_test_tensor = torch.tensor(x_test.values, 
                                             dtype = torch.float32)
