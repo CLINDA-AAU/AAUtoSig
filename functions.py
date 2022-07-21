@@ -251,7 +251,7 @@ def cosine_perm(A,B):
     sim = 1 - sp.distance.cdist(A, B, 'cosine')
     curr_x = acc(sim)
     best_pe = sim
-    best_idx =range(A.shape[0])
+    best_idx = range(A.shape[0])
     for pe, idx in zip(permutations(sim), permutations(best_idx)):
         pe = np.array(pe)
         if(acc(pe)>curr_x):
