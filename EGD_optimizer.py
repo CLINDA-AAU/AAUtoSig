@@ -20,34 +20,31 @@ class EGD_optim(Optimizer):
     def step(self, closure=None):
         loss = None
         if closure is not None:
-            loss = closure()
+            with torch.enable_grad():
+                loss = closure()
 
-        for p in group['params']:
-            if p.gard is None:
-                 continue
-            grad = p.grad.data
-
-            state = self.state[p]
-
-            if len(state) == 0:
-                state['step'] = 0
-                state['exp_avg'] = torch.zeros_like(p.data)
-                state['exp_avg_sq'] = torch.zeros_like(p.data)
-            
-            exp_avg, exp_avg_sq = state['exp_avg'], state['exp_avg_sq']
-            state['step'] += 1
-            
-
+        for group in self.param_groups:
+            params_with_grad = []
+            d_p_list = []
             lr = group['lr']
+            has_sparse_grad = False
 
-            for layer in param_layers:
-                                
-                if not new_init:
-                    for p_type, p in layer.items():
-                        if clip_grad is not None:
-                            p.grad.data.clamp_(-clip_grad, clip_grad)
-                        self.update_param(p, lr, p_type, weight_reg)
-                
-                self.renormalize_layer(layer, u, norm_per)
+            for p in group['params']:
+                if p.grad is not None:
+                    params_with_grad.append(p)
+                    d_p_list.append(p.grad) #gradient of the parameter
+                    if p.grad.is_sparse:
+                        has_sparse_grad = True
+
+                    state = self.state[p]
+
+            for i, param in enumerate(params_with_grad):
+                d_p = d_p_list[i]
+                factor = torch.exp(lr*d_p)
+
+                param.mul(factor)
+
+
 
         return loss
+

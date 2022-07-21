@@ -9,7 +9,8 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 from sklearn import model_selection
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
 from EGD import EGD_init, train_EGD
-from egpm import EGPM
+#from egpm import EGPM
+from EGD_optimizer import EGD_optim
 
 import torch.optim as optim
 
@@ -34,11 +35,11 @@ def optuna_tune(X, nsig):
 
 
         optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
-
-        optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
-                             norm_per=None, gradient_clipping=True, 
-                             weight_regularization=None, plus_minus=False,
-                             init='bootstrap')
+        optimizer_dec = EGD_optim(model.dec1.parameters(), lr = lr2)
+        #optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
+                             #norm_per=None, gradient_clipping=True, 
+                             #weight_regularization=None, plus_minus=False,
+                             #init='bootstrap')
                             
 
 
