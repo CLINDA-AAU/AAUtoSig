@@ -51,7 +51,7 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
           reconstructed = model(data)#.view(-1,96))
             
           # Calculating the loss function
-          loss = - loss_function(reconstructed, data)#.view(-1,96))
+          loss = loss_function(reconstructed, data)#.view(-1,96))
           loss_p =+ loss.item()
 
           optimizer.zero_grad()
@@ -66,7 +66,7 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
     plt.show() 
     return(model)
 
-
+'''
 nsigs = 5
 
 mf_df, true_sigs,_ = simulate_counts(nsigs, 5000, pentanucelotide = False)
@@ -99,9 +99,4 @@ train_NMFAE(epochs = 2000,
             optimizer = optimizer_enc,
             batch_size = 32)
 
-#the weights of the decoding layer (dec1) is where we find the signatures.
-sigs = model.dec1.weight.data    
-sigs = pd.DataFrame(sigs.numpy()) 
-
-plotsigs(trinucleotide, mutation, sigs.to_numpy(), 5, "Estimate")
-plotsigs(trinucleotide, mutation, true_sigs.to_numpy(), 5, "True")
+'''

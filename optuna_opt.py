@@ -8,6 +8,7 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 from sklearn import model_selection
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
+from NMFAE_init import NMFAE, train_NMFAE
 from EGD import EGD_init, train_EGD
 #from egpm import EGPM
 from EGD_optimizer import EGD_optim
@@ -16,62 +17,64 @@ import torch.optim as optim
 
 
 #takes a data matrix nX96 and returns a dictionary of optimal hyperparameters
-def optuna_tune(X, nsig):
+def optuna_tune(X, nsig, model_name = "NMFAE"):
 
     def objective(trial):
         #nsig = trial.suggest_int('nsig', 2, 15)
-        lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
-        lr2 = trial.suggest_float('lr2',1e-8, 1e-1, log=True)
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
+        lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
+
+        if model_name == "NMFAE":
+            model = NMFAE(nsig)
+        if model_name == "AAUtoSig":
+            model = AAUtoSig(dim1 = nsig)
+        if model_name == "EGD":
+            lr2 = trial.suggest_float('lr2',1e-8, 4, log=True)
+            model = EGD_init(nsig)
+            optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
+            optimizer_dec = EGD_optim(model.dec1.parameters(), lr = lr2)
+            #optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
+                             #norm_per=None, gradient_clipping=True, 
+                             #weight_regularization=None, plus_minus=False,
+                             #init='bootstrap')
         
-        
-        #model = NMFAE(nsig)
-        #model = AAUtoSig(dim1 = nsig)
-        model = EGD_init(nsig)
+        if model_name == "NMFAE" or model_name == "AAUtoSig":
+            optimizer = torch.optim.Adam(model.parameters(), lr = lr1)
         kf = model_selection.KFold()
 
         out_err = []
         loss_function = torch.nn.MSELoss(reduction='mean')
 
 
-        optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
-        optimizer_dec = EGD_optim(model.dec1.parameters(), lr = lr2)
-        #optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
-                             #norm_per=None, gradient_clipping=True, 
-                             #weight_regularization=None, plus_minus=False,
-                             #init='bootstrap')
-                            
-
-
         for train, test in kf.split(X):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:]
-            '''
-            train_NMFAE(
-                epochs = 200, 
-                model = model, 
-                x_train = x_train, 
-                loss_function = loss_function, 
-                optimizer = optimizer,
-                batch_size = int(batch_size)
-                )
-            
-            train_AAUtoSig(
-                epochs = 200, 
-                model = model, 
-                x_train = x_train, 
-                loss_function = loss_function, 
-                optimizer = optimizer,
-                batch_size = int(batch_size)
-                )
-            '''
-            train_EGD(epochs = 2000, 
-                model = model, 
-                x_train = x_train, 
-                loss_function = loss_function, 
-                optimizer_enc = optimizer_enc,
-                optimizer_dec = optimizer_dec,
-                batch_size = int(batch_size))
+            if model_name == "NMFAE":
+                train_NMFAE(
+                    epochs = 2000, 
+                    model = model, 
+                    x_train = x_train, 
+                    loss_function = loss_function, 
+                    optimizer = optimizer,
+                    batch_size = int(batch_size)
+                    )
+            if model_name == "AAUtoSig":    
+                train_AAUtoSig(
+                    epochs = 2000, 
+                    model = model, 
+                    x_train = x_train, 
+                    loss_function = loss_function, 
+                    optimizer = optimizer,
+                    batch_size = int(batch_size)
+                    )
+            if model_name == "EGD":
+                train_EGD(epochs = 2000, 
+                    model = model, 
+                    x_train = x_train, 
+                    loss_function = loss_function, 
+                    optimizer_enc = optimizer_enc,
+                    optimizer_dec = optimizer_dec,
+                    batch_size = int(batch_size))
 
             cv_test_tensor = torch.tensor(x_test.values, 
                                             dtype = torch.float32)

@@ -76,7 +76,7 @@ def plotsigs(context, mutation, signatures, nsigs, title):
     
 
 
-        
+'''        
 # Model Initialization
         
 
@@ -100,7 +100,7 @@ plotsigs(trinucleotide, mutation, sigs_est.to_numpy(), 5, "Estimated signatures"
 
 
 
-'''
+
 #initializing cv is an int gives stratified Kfold cv
 gs = GridSearchCV(net, params, refit=False, scoring='accuracy', verbose=1, cv=10)
 

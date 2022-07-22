@@ -27,8 +27,7 @@ class EGD_init(torch.nn.Module):
 
     # Model Initialization
                                 
-def train_EGD(epochs, model, x_train, loss_function, optimizer_enc, 
-                optimizer_dec, batch_size):
+def train_EGD(epochs, model, x_train, loss_function, optimizer_enc, optimizer_dec, batch_size):
     
     #turn the training data into a tensor
     x_train_tensor = torch.tensor(x_train.values, 

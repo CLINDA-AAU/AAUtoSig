@@ -40,7 +40,7 @@ class EGD_optim(Optimizer):
 
             for i, param in enumerate(params_with_grad):
                 d_p = d_p_list[i]
-                factor = torch.exp(lr*d_p)
+                factor = torch.exp(-lr*d_p)
 
                 param.mul(factor)
 
