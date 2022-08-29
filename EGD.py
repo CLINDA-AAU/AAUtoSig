@@ -14,11 +14,11 @@ class EGD_init(torch.nn.Module):
 
         # Building an linear encoder
         # 96 => dim1
-        self.enc1 = torch.nn.Linear(96, dim1, bias = False)
+        self.enc1 = torch.nn.Linear(1024, dim1, bias = False)
           
         # Building an linear decoder 
         # dim1 ==> 96
-        self.dec1 = torch.nn.Linear(dim1, 96, bias = False)
+        self.dec1 = torch.nn.Linear(dim1, 1024, bias = False)
 
     def forward(self, x):
         x = torch.nn.functional.relu(self.enc1(x))
@@ -27,7 +27,7 @@ class EGD_init(torch.nn.Module):
 
     # Model Initialization
                                 
-def train_EGD(epochs, model, x_train, loss_function, optimizer_enc, optimizer_dec, batch_size):
+def train_EGD(epochs, model, x_train, loss_function, optimizer, batch_size): #optimizer_enc, optimizer_dec , ):
     
     #turn the training data into a tensor
     x_train_tensor = torch.tensor(x_train.values, 
@@ -47,16 +47,20 @@ def train_EGD(epochs, model, x_train, loss_function, optimizer_enc, optimizer_de
           reconstructed = model(data)
             
           # Calculating the loss function
+
+          #optimizer_enc.zero_grad() #clear old gradients
+          #optimizer_dec.zero_grad()
+          optimizer.zero_grad()
+
+
           loss = loss_function(reconstructed, data)
           loss_p =+ loss.item()
-
-          optimizer_enc.zero_grad() #clear old gradients
-          optimizer_dec.zero_grad()
           
           loss.backward() #backpropagation
           
-          optimizer_enc.step()#update params
-          optimizer_dec.step()
+          #optimizer_enc.step()#update params
+          #optimizer_dec.step()
+          optimizer.step()
 
         loss_list.append(loss_p)
 

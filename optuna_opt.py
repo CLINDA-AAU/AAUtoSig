@@ -22,24 +22,24 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
     def objective(trial):
         #nsig = trial.suggest_int('nsig', 2, 15)
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
-        lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
+        #lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
 
         if model_name == "NMFAE":
             model = NMFAE(nsig)
         if model_name == "AAUtoSig":
             model = AAUtoSig(dim1 = nsig)
         if model_name == "EGD":
-            lr2 = trial.suggest_float('lr2',1e-8, 4, log=True)
+            lr2 = trial.suggest_float('lr2',1e-2, 1000, log=True)
             model = EGD_init(nsig)
-            optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
-            optimizer_dec = EGD_optim(model.dec1.parameters(), lr = lr2)
+            #optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
+            optimizer_dec = EGD_optim(model.parameters(), lr = lr2)
             #optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
                              #norm_per=None, gradient_clipping=True, 
                              #weight_regularization=None, plus_minus=False,
                              #init='bootstrap')
         
         if model_name == "NMFAE" or model_name == "AAUtoSig":
-            optimizer = torch.optim.Adam(model.parameters(), lr = lr1)
+            optimizer = torch.optim.Adam(model.parameters(), lr = 0.1)#lr1)
         kf = model_selection.KFold()
 
         out_err = []
@@ -72,8 +72,8 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
                     model = model, 
                     x_train = x_train, 
                     loss_function = loss_function, 
-                    optimizer_enc = optimizer_enc,
-                    optimizer_dec = optimizer_dec,
+                    #optimizer_enc = optimizer_enc,
+                    optimizer = optimizer_dec,
                     batch_size = int(batch_size))
 
             cv_test_tensor = torch.tensor(x_test.values, 
