@@ -6,10 +6,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-from functions import simulate_counts, plotsigs
-from egpm import EGPM
-
-
 class NMFAE(torch.nn.Module):
     def __init__(self, dim1):
     
