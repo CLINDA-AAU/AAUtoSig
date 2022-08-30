@@ -4,24 +4,23 @@ import pandas as pd
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-
-from functions import simulate_counts, plotsigs
+import torch.nn.functional as F
 
 class EGD_init(torch.nn.Module):
-    def __init__(self, dim1):
+    def __init__(self, hidden_dim, input_dim):
     
         super().__init__()
 
         # Building an linear encoder
         # 96 => dim1
-        self.enc1 = torch.nn.Linear(1024, dim1, bias = False)
+        self.enc1 = torch.nn.Linear(input_dim, hidden_dim, bias = False)
           
         # Building an linear decoder 
         # dim1 ==> 96
-        self.dec1 = torch.nn.Linear(dim1, 1024, bias = False)
+        self.dec1 = torch.nn.Linear(hidden_dim, input_dim, bias = False)
 
     def forward(self, x):
-        x = torch.nn.functional.relu(self.enc1(x))
+        x = F.relu(self.enc1(x))
         x = self.dec1(x)
         return x
 
@@ -41,7 +40,7 @@ def train_EGD(epochs, model, x_train, loss_function, optimizer, batch_size): #op
     loss_list = []
     for epoch in range(epochs):
         model.train() #set model in traning mode (alternative model.eval())
-        loss_p = 0
+        loss_p = 0.0
         for data in trainloader:
           # Output of Autoencoder
           reconstructed = model(data)
@@ -62,7 +61,7 @@ def train_EGD(epochs, model, x_train, loss_function, optimizer, batch_size): #op
           #optimizer_dec.step()
           optimizer.step()
 
-        loss_list.append(loss_p)
+        loss_list.append(loss_p/x_train_tensor.shape[0])
 
     plt.plot(range(epochs), loss_list)
     plt.show() 
