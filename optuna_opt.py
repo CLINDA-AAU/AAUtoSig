@@ -29,14 +29,10 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
         if model_name == "AAUtoSig":
             model = AAUtoSig(dim1 = nsig)
         if model_name == "EGD":
-            lr2 = trial.suggest_float('lr2',1e-2, 1000, log=True)
+            lr2 = trial.suggest_float('lr2',1e-2, 3000, log=True)
             model = EGD_init(hidden_dim = nsig, input_dim = 1024)
             #optimizer_enc = torch.optim.Adam(model.enc1.parameters(), lr = lr1)
             optimizer_dec = EGD_optim(model.parameters(), lr = lr2)
-            #optimizer_dec = EGPM(model.dec1.parameters(), lr = lr2, u_scaling=1,
-                             #norm_per=None, gradient_clipping=True, 
-                             #weight_regularization=None, plus_minus=False,
-                             #init='bootstrap')
         
         if model_name == "NMFAE" or model_name == "AAUtoSig":
             optimizer = torch.optim.Adam(model.parameters(), lr = 0.1)#lr1)
