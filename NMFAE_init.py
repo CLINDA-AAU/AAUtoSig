@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 import torch
 import torch.nn.functional as F
+# -*- coding: utf-8 -*-
+import torch
+import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
+import numpy as np          
 
 class NMFAE(torch.nn.Module):
     def __init__(self, dim1):
     
         super().__init__()
 
-        
         # Building an linear encoder
         # 96 => dim1 => dim2
         self.enc1 = torch.nn.Linear(96, dim1, bias = False)
@@ -37,18 +39,25 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
                                               batch_size=batch_size, 
                                               shuffle=True)
     
-    loss_list = []
+    outputs = []
+
+    training_plot = []
+    validation_plot = []
+    
+    last_score = np.inf
+    max_es_rounds = 50
+    es_rounds = max_es_rounds
+    best_epoch= 0    
+
     for epoch in range(epochs):
         model.train()
         
-        loss_p = 0
         for data in trainloader:
           # Output of Autoencoder
           reconstructed = model(data)#.view(-1,96))
             
           # Calculating the loss function
           loss = loss_function(reconstructed, data)#.view(-1,96))
-          loss_p =+ loss.item()
 
           optimizer.zero_grad()
           loss.backward()
@@ -56,9 +65,19 @@ def train_NMFAE(epochs, model, x_train, loss_function, optimizer, batch_size):
         with torch.no_grad():
             for p in model.parameters():
                 p.clamp_(min = 0)
-        loss_list.append(loss_p)
 
-    plt.plot(range(epochs), loss_list)
+            model.eval()        
+            inputs = x_train_tensor[:]
+            outputs = model(inputs)
+            
+            train_loss = loss_function(outputs,inputs) #+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+            #train_loss = kl_poisson(inputs, outputs)
+    
+            training_plot.append(train_loss)
+
+    plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
+    plt.legend()
+    plt.show()
     plt.show() 
     return(model)
 

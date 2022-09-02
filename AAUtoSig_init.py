@@ -5,34 +5,28 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import copy
-
 
 class AAUtoSig(torch.nn.Module):
     def __init__(self, dim1):
+    
         super().__init__()
-
         
         # Building an linear encoder
         # 96 => dim1 => dim2
         self.enc1 = torch.nn.Linear(96, dim1, bias = False)
-        self.enc2 = torch.nn.Linear(dim1, dim1, bias = False)
           
         # Building an linear decoder 
-        # dim2 => dim1 => 96
-        self.dec1 = torch.nn.Linear(dim1, dim1, bias = False)
-        self.dec2 = torch.nn.Linear(dim1, 96, bias = False)
+        # dim ==> 96
+        self.dec1 = torch.nn.Linear(dim1, 96, bias = False)
             
 
     def forward(self, x):
-        x = F.softplus(self.enc1(x))
-        x = F.softplus(self.enc2(x))
-        x = F.softplus(self.dec1(x))
-        x = F.softplus(self.dec2(x))
+        x = self.enc1(x)
+        x = self.dec1(x)
         return x
         
     # Model Initialization
-                                
+                                  
 def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size):
     
     x_train_tensor = torch.tensor(x_train.values, 
@@ -44,7 +38,6 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
                                               batch_size=batch_size, 
                                               shuffle=True)
     
-    """
     outputs = []
     
     training_plot=[]
@@ -54,20 +47,17 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
     max_es_rounds = 50
     es_rounds = max_es_rounds
     best_epoch= 0
-    #l1_lambda = 0.001
-    """
 
     for epoch in range(epochs):
 
             
         model.train()
-        
         for data in trainloader:
           # Output of Autoencoder
-          reconstructed = model(data)#.view(-1,96))
+          reconstructed = model(data)#.view(-1,96)
             
-          # Calculating the loss function
-          loss = loss_function(reconstructed, data)#.view(-1,96))# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+          # Calculating the loss function,
+          loss = loss_function(reconstructed, data)#.view(-1,96)# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
           
           # The gradients are set to zero,
           # the the gradient is computed and stored.
@@ -80,9 +70,9 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
             for p in model.parameters():
                 p.clamp_(min = 0)
             '''
-            for p in model.dec2.weight:
+            for p in model.dec1.weight:
                 p.clamp_(min = 0)
-            """  
+            """
             model.eval()
             
             inputs = x_train_tensor[:]
@@ -94,7 +84,7 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
             training_plot.append(train_loss)
         
      
-    
+            
             inputs  = x_test_tensor[:]
             outputs = model(inputs)
             valid_loss = loss_function(outputs, inputs)# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
@@ -129,6 +119,7 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
     plt.title('Score per epoch')
     plt.ylabel('Mean Squared Error')
     plt.plot(list(range(len(training_plot))), validation_plot, label='Validation MSE')
+    
     plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
     plt.legend()
     plt.show()
