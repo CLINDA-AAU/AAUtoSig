@@ -38,16 +38,6 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
                                               batch_size=batch_size, 
                                               shuffle=True)
     
-    outputs = []
-    
-    training_plot=[]
-    validation_plot=[]
-    
-    last_score=np.inf
-    max_es_rounds = 50
-    es_rounds = max_es_rounds
-    best_epoch= 0
-
     for epoch in range(epochs):
 
             
@@ -57,7 +47,7 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
           reconstructed = model(data)#.view(-1,96)
             
           # Calculating the loss function,
-          loss = loss_function(reconstructed, data)#.view(-1,96)# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+          loss = loss_function(reconstructed, data)#.view(-1,96)
           
           # The gradients are set to zero,
           # the the gradient is computed and stored.
@@ -72,57 +62,5 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
             '''
             for p in model.dec1.weight:
                 p.clamp_(min = 0)
-            """
-            model.eval()
-            
-            inputs = x_train_tensor[:]
-            outputs = model(inputs)
-            
-            train_loss = loss_function(outputs,inputs) #+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
-            #train_loss = kl_poisson(inputs, outputs)
-    
-            training_plot.append(train_loss)
-        
-     
-            
-            inputs  = x_test_tensor[:]
-            outputs = model(inputs)
-            valid_loss = loss_function(outputs, inputs)# + torch.mean(reconstructed) - torch.mean(data.view(-1,96))
-            #valid_loss = kl_poisson(inputs, outputs)
-    
-            
-            validation_plot.append(valid_loss)
-            print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
-                                                                          np.round(training_plot[-1],2), 
-                                                                          np.round(validation_plot[-1],2)))
-    
-     #Patient early stopping - thanks to Elixir  
-        if last_score > valid_loss:
-            last_score = valid_loss
-            best_epoch = epoch
-            es_rounds = max_es_rounds
-            best_model = copy.deepcopy(model)
-         
-        else:
-            if es_rounds > 0:
-                es_rounds -=1
-            else:
-                print('EARLY STOPPING')
-                print('Best epoch found: nº {}'.format(best_epoch))
-                print('Exiting. . .')
-                break
-    
-    
-    
-    plt.figure(figsize=(16,12))
-    plt.subplot(3, 1, 1)
-    plt.title('Score per epoch')
-    plt.ylabel('Mean Squared Error')
-    plt.plot(list(range(len(training_plot))), validation_plot, label='Validation MSE')
-    
-    plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
-    plt.legend()
-    plt.show()
-    """
     
     return(model)
