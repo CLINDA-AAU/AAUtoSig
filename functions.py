@@ -6,6 +6,7 @@ import pandas as pd
 import scipy.spatial as sp
 from random import sample
 from itertools import permutations
+import sklearn.metrics 
 
 
 # Pei et al. uses data on the pentanucleotide from to extract the mutational signatures. There
@@ -261,8 +262,29 @@ def cosine_perm(A,B):
             
     return((best_pe, list(best_idx)))
 
+
+
+
+#A = np.random.rand(3,2)
+#B = np.random.rand(3,2)
+
+# this best match of the estimated signatures to the a signature in the true signature set, which generating the 
+# max value of each row in the similarity matrix. Thus, the first argument HAS to be the estimated set and the 
+# second argument has to be the reference set
+#  
+def cosine_max(est_set, ref_set):
+    #This operation creates the cosine distance matrix between rows in A and rows 
+    #in B, where the rows in sim represent the rows in A and the columns in sim 
+    #represent the rows in B.
+    sim = 1 - sp.distance.cdist(est_set, ref_set, 'cosine')
+    nsigs = est_set.shape[0]
+    max_cosine = np.sum(sim.max(axis=1))/nsigs
+    return(max_cosine)
 '''
-res = np.round(cosine_perm(A, B)[0],2)
+result = cosine_max(A, B)
+res = np.round(result[0],2)
+
+print(result)
 
 
 signatures = ["S1", "S2", "S3"]
