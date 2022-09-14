@@ -10,7 +10,6 @@ from sklearn import model_selection
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
 from NMFAE_init import NMFAE, train_NMFAE
 from EGD import EGD_init, train_EGD
-#from egpm import EGPM
 from EGD_optimizer import EGD_optim
 
 import torch.optim as optim
@@ -22,7 +21,7 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
     def objective(trial):
         #nsig = trial.suggest_int('nsig', 2, 15)
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
-        #lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
+        lr1 = trial.suggest_float('lr1',1e-8, 1e-1, log=True)
 
         if model_name == "NMFAE":
             model = NMFAE(nsig)
@@ -35,7 +34,7 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
             optimizer_dec = EGD_optim(model.parameters(), lr = lr2)
         
         if model_name == "NMFAE" or model_name == "AAUtoSig":
-            optimizer = torch.optim.Adam(model.parameters(), lr = 0.1)#lr1)
+            optimizer = torch.optim.Adam(model.parameters(), lr = lr1)
         kf = model_selection.KFold()
 
         out_err = []
