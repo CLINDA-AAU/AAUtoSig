@@ -262,7 +262,29 @@ def cosine_perm(A,B):
             
     return((best_pe, list(best_idx)))
 
+from xmlrpc.client import boolean
+import cvxpy as cp
+import numpy as np
 
+def cosine_cvx(est_set, ref_set):
+    #This operation creates the cosine distance matrix between rows in A and rows 
+    #in B, where the rows in sim represent the rows in A and the columns in sim 
+    #represent the rows in B.
+    sim = 1 - sp.distance.cdist(est_set, ref_set, 'cosine')
+    nsigs = est_set.shape[0]
+    Y = cp.Variable((nsigs,nsigs))
+    P = cp.Variable((nsigs,nsigs), boolean = True)
+
+#Define problem
+    problem = cp.Problem(cp.Maximize(cp.trace(Y)), 
+                        [Y == P@sim, #rowwise permutaiton, colwise: Y == A@P
+                        cp.sum(P, axis = 1) == 1,
+                        cp.sum(P, axis = 0) == 1])
+
+
+    problem.solve()
+    perm = P.value.argmax(axis = 1)
+    return((Y.value, perm))
 
 
 #A = np.random.rand(3,2)
@@ -281,11 +303,10 @@ def cosine_max(est_set, ref_set):
     max_cosine = np.sum(sim.max(axis=1))/nsigs
     return(max_cosine)
 '''
-result = cosine_max(A, B)
+result = cosine_cvx(A, B)
 res = np.round(result[0],2)
 
 print(result)
-
 
 signatures = ["S1", "S2", "S3"]
 
