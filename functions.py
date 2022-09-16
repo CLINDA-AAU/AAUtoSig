@@ -286,22 +286,18 @@ def cosine_cvx(est_set, ref_set):
     perm = P.value.argmax(axis = 1)
     return((Y.value, perm))
 
+from scipy.optimize import linear_sum_assignment
 
-#A = np.random.rand(3,2)
-#B = np.random.rand(3,2)
-
-# this best match of the estimated signatures to the a signature in the true signature set, which generating the 
-# max value of each row in the similarity matrix. Thus, the first argument HAS to be the estimated set and the 
-# second argument has to be the reference set
-#  
-def cosine_max(est_set, ref_set):
+def cosine_HA(est_set, ref_set):
     #This operation creates the cosine distance matrix between rows in A and rows 
     #in B, where the rows in sim represent the rows in A and the columns in sim 
     #represent the rows in B.
     sim = 1 - sp.distance.cdist(est_set, ref_set, 'cosine')
-    nsigs = est_set.shape[0]
-    max_cosine = np.sum(sim.max(axis=1))/nsigs
-    return(max_cosine)
+    _, col_ind  = linear_sum_assignment(-sim.T)
+    return((sim.T[:,col_ind]).T, col_ind)
+
+#A = np.random.rand(3,2)
+#B = np.random.rand(3,2)
 '''
 result = cosine_cvx(A, B)
 res = np.round(result[0],2)
