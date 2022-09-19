@@ -1,7 +1,7 @@
 from xmlrpc.client import boolean
 import cvxpy as cp
 import numpy as np
-from functions import cosine_perm
+from functions import cosine_cvx, cosine_HA
 from scipy.optimize import linear_sum_assignment
 import scipy.spatial as sp
 
@@ -46,14 +46,14 @@ def test_cvx(n):
     #return(sim_cvx, perm_cvx)
     #return(np.mean(sim_cvx.diagonal()))
 
-    print(set(A[perm_cvx].diagonal()) == set(A[row_ind, col_ind]) ) 
-    print(row_ind, col_ind)
-    print(perm_cvx)
-    print(A)
-    print((A.T[:,col_ind]).T)
-    print(A[perm_cvx])
+    #print(set(A[perm_cvx].diagonal()) == set(A[row_ind, col_ind]) ) 
+    #print(row_ind, col_ind)
+    #print(perm_cvx)
+    #print(A)
+    #print((A.T[:,col_ind]).T)
+    #print(A[perm_cvx])
 
-        #return(A, A[perm_cvx], A[col_ind])
+    return(np.all(perm_cvx == col_ind))
 
 """
 
@@ -66,10 +66,28 @@ print(sim)
 print(A[row_ind, col_ind].sum())
 print(A[pe].diagonal().sum())
 """
-asd = [test_cvx(4) for _ in range(1)]
+def compare(n):
+  n = n
+
+  true = np.abs(np.random.rand(n, 96))
+  est = np.abs(np.random.rand(n, 96))
+  #A = sim = 1 - sp.distance.cdist(est, true, 'cosine')
+  mat_HA, perm_HA = cosine_HA(est, true)
+  mat_cvx, perm_cvx = cosine_cvx(est, true)
+
+  if np.all(perm_HA == perm_cvx):
+    if np.all(mat_cvx == mat_HA):
+        print("the same")
+    else:
+        print("different matrices")
+  else:
+      print("different perm")
+
+
+
+asd = [compare(10) for _ in range(15)]
+
 print(asd)
-
-
 
 
 
