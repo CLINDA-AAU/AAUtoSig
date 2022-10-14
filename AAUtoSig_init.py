@@ -38,6 +38,16 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
                                               batch_size=batch_size, 
                                               shuffle=True)
     
+
+    outputs = []
+
+    training_plot = []
+    validation_plot = []
+    
+    last_score = np.inf
+    max_es_rounds = 50
+    es_rounds = max_es_rounds
+    best_epoch= 0
     for epoch in range(epochs):
 
             
@@ -62,5 +72,19 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
             '''
             for p in model.dec1.weight:
                 p.clamp_(min = 0)
+
+            model.eval()        
+            inputs = x_train_tensor[:]
+            outputs = model(inputs)
+            
+            train_loss = loss_function(outputs,inputs) #+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
+            #train_loss = kl_poisson(inputs, outputs)
+    
+            training_plot.append(train_loss)
+            
+    plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
+    plt.legend()
+    plt.show()
+    plt.show()
     
     return(model)

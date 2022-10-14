@@ -46,7 +46,7 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
             x_test = pd.DataFrame(X).iloc[test,:]
             if model_name == "NMFAE":
                 train_NMFAE(
-                    epochs = 2000, 
+                    epochs = 500, 
                     model = model, 
                     x_train = x_train, 
                     loss_function = loss_function, 
@@ -55,7 +55,7 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
                     )
             if model_name == "AAUtoSig":    
                 train_AAUtoSig(
-                    epochs = 2000, 
+                    epochs = 500, 
                     model = model, 
                     x_train = x_train, 
                     loss_function = loss_function, 
@@ -63,7 +63,7 @@ def optuna_tune(X, nsig, model_name = "NMFAE"):
                     batch_size = int(batch_size)
                     )
             if model_name == "EGD":
-                train_EGD(epochs = 2000, 
+                train_EGD(epochs = 500, 
                     model = model, 
                     x_train = x_train, 
                     loss_function = loss_function, 

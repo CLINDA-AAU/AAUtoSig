@@ -288,6 +288,8 @@ def cosine_cvx(est_set, ref_set):
 
 from scipy.optimize import linear_sum_assignment
 
+
+# optimal signature matching using the Hungarian algorithm
 def cosine_HA(est_set, ref_set):
     #This operation creates the cosine distance matrix between rows in A and rows 
     #in B, where the rows in sim represent the rows in A and the columns in sim 
