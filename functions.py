@@ -33,9 +33,10 @@ def expand_SBS(sig):
   return res
 
 
+
 def simulate_counts(nsigs, npatients, pentanucelotide = False, sig_names = None):
   #Arrange COSMIC to be the same ordering as count data
-  COSMIC = pd.read_csv(r'COSMIC\COSMIC_v3.2_SBS_GRCh37.txt', sep = '\t', index_col=0)
+  COSMIC = pd.read_csv("COSMIC/COSMIC_v3.2_SBS_GRCh37.txt", sep = '\t', index_col=0)
   context = COSMIC.index
   mutation = [s[2:5] for s in context]
   COSMIC['mutation'] = mutation

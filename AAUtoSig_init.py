@@ -82,9 +82,9 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
     
             training_plot.append(train_loss)
             
-    plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
-    plt.legend()
-    plt.show()
-    plt.show()
+    #plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
+    #plt.legend()
+    #plt.show()
+    #plt.show()
     
     return(model)
