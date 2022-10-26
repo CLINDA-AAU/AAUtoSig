@@ -8,7 +8,6 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 from sklearn import model_selection
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
-from NMFAE_init import NMFAE, train_NMFAE
 from functions import simulate_counts
 
 
@@ -63,7 +62,7 @@ def optuna_tune(X, nsig, criterion, optimizer_alg):
     
     study = optuna.create_study(direction="minimize")
     
-    study.optimize(objective, n_trials=20, timeout=600) 
+    study.optimize(objective, n_trials=16, timeout=600) 
     trial = study.best_trial
 
     return trial.params
