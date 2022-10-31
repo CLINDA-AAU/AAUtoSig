@@ -62,9 +62,10 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
           # The gradients are set to zero,
           # the the gradient is computed and stored.
           # .step() performs parameter update
-          optimizer.zero_grad()
           loss.backward()
           optimizer.step()
+          optimizer.zero_grad()
+
         with torch.no_grad():
             '''
             for p in model.parameters():

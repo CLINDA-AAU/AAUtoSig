@@ -262,7 +262,7 @@ def cosine_perm(A,B):
             best_idx = idx
             
     return((best_pe, list(best_idx)))
-
+'''
 from xmlrpc.client import boolean
 import cvxpy as cp
 import numpy as np
@@ -289,7 +289,7 @@ def cosine_cvx(est_set, ref_set):
 
 from scipy.optimize import linear_sum_assignment
 
-
+'''
 # optimal signature matching using the Hungarian algorithm
 def cosine_HA(est_set, ref_set):
     #This operation creates the cosine distance matrix between rows in A and rows 
