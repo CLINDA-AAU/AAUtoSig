@@ -5,6 +5,8 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import copy
+
 
 class AAUtoSig(torch.nn.Module):
     def __init__(self, dim1):
@@ -27,12 +29,12 @@ class AAUtoSig(torch.nn.Module):
         
     # Model Initialization
                                   
-def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size):
+def train_AAUtoSig(epochs, model, x_train, x_test, loss_function, optimizer, batch_size, do_plot=False):
     
     x_train_tensor = torch.tensor(x_train.values, 
                               dtype = torch.float32)
-    #x_test_tensor = torch.tensor(x_test.values, 
-    #                             dtype = torch.float32)
+    x_test_tensor = torch.tensor(x_test.values, 
+                                 dtype = torch.float32)
     
     trainloader = torch.utils.data.DataLoader(x_train_tensor, 
                                               batch_size=batch_size, 
@@ -40,17 +42,15 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
     
 
     outputs = []
-
-    training_plot = []
-    validation_plot = []
-    
-    last_score = np.inf
-    max_es_rounds = 50
+    training_plot=[]
+    validation_plot=[]
+    last_score=np.inf
+    max_es_rounds = 20
     es_rounds = max_es_rounds
     best_epoch= 0
-    for epoch in range(epochs):
 
-            
+    for epoch in range(epochs):
+        train_loss = 0.0       
         model.train()
         for data in trainloader:
           # Output of Autoencoder
@@ -65,27 +65,47 @@ def train_AAUtoSig(epochs, model, x_train, loss_function, optimizer, batch_size)
           loss.backward()
           optimizer.step()
           optimizer.zero_grad()
-
+          train_loss += loss.item()
+        training_plot.append(train_loss/len(trainloader))
         with torch.no_grad():
-            '''
-            for p in model.parameters():
-                p.clamp_(min = 0)
-            '''
             for p in model.dec1.weight:
                 p.clamp_(min = 0)
-
             model.eval()        
-            inputs = x_train_tensor[:]
+            inputs  = x_test_tensor
             outputs = model(inputs)
-            
-            train_loss = loss_function(outputs,inputs) #+ torch.mean(reconstructed) - torch.mean(data.view(-1,96))
-            #train_loss = kl_poisson(inputs, outputs)
-    
-            training_plot.append(train_loss)
+            valid_loss = loss_function(inputs, outputs)
+        
+            validation_plot.append(valid_loss)
+            print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
+                                                                        training_plot[-1], 
+                                                                        validation_plot[-1]))
+        #Patient early stopping - thanks to Elixir  
+        if last_score > valid_loss:
+            last_score = valid_loss
+            best_epoch = epoch
+            es_rounds = max_es_rounds
+            best_model = copy.deepcopy(model)
+        else:
+            if es_rounds > 0:
+                es_rounds -=1
+            else:
+                print('EARLY-STOPPING !')
+                print('Best epoch found: nº {}'.format(best_epoch))
+                print('Exiting. . .')
+                break
+
+    if do_plot:
+        plt.figure(figsize=(16,12))
+        plt.subplot(3, 1, 1)
+        plt.title('Score per epoch')
+        #plt.ylabel('Kullback Leibler Divergence')
+        plt.plot(list(range(len(training_plot))), validation_plot, label='Validation loss')
+        plt.plot(list(range(len(training_plot))), training_plot, label='Train loss')
+        plt.legend()
             
     #plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
     #plt.legend()
     #plt.show()
     #plt.show()
     
-    return(model)
+    return(best_model)

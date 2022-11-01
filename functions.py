@@ -6,6 +6,7 @@ import pandas as pd
 import scipy.spatial as sp
 from random import sample
 from itertools import permutations
+from scipy.optimize import linear_sum_assignment
 import sklearn.metrics 
 
 
