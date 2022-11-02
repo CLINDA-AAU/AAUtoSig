@@ -81,14 +81,14 @@ def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, criterion, opt
       optimizer = torch.optim.Adam(model.parameters(), lr = params['lr'])
    if optimizer_alg == "Tuned":
       optimizer =  getattr(torch.optim, params['optimizer'])(model.parameters(), lr = params['lr'])
-   train_AAUtoSig(5000, model, train_df, loss_function= loss, optimizer=optimizer, batch_size = params['batch_size'])
+   _, out_error, _ = train_AAUtoSig(5000, model, train_df, validation_df, loss_function= loss, optimizer=optimizer, batch_size = params['batch_size'], do_plot = True)
 
    signatures = model.dec1.weight.data    
    signatures = pd.DataFrame(signatures.numpy())
-   validation_tensor = torch.tensor(validation_df.values,
-                                    dtype = torch.float32)
-   rec_data = model(validation_tensor)
-   out_error = criterion(validation_tensor, rec_data).detach().item()
+   #validation_tensor = torch.tensor(validation_df.values,
+   #                                 dtype = torch.float32)
+   #rec_data = model(validation_tensor)
+   #out_error = criterion(validation_tensor, rec_data).detach().item()
    #MSE = np.mean(((validation_df - rec_data.detach().numpy())**2).to_numpy())
    #return(MSE)
    

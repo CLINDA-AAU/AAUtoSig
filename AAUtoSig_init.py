@@ -44,10 +44,6 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_function, optimizer, bat
     outputs = []
     training_plot=[]
     validation_plot=[]
-    last_score=np.inf
-    max_es_rounds = 20
-    es_rounds = max_es_rounds
-    best_epoch= 0
 
     for epoch in range(epochs):
         train_loss = 0.0       
@@ -76,24 +72,9 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_function, optimizer, bat
             valid_loss = loss_function(inputs, outputs)
         
             validation_plot.append(valid_loss)
-            print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
-                                                                        training_plot[-1], 
-                                                                        validation_plot[-1]))
-        #Patient early stopping - thanks to Elixir  
-        if last_score > valid_loss:
-            last_score = valid_loss
-            best_epoch = epoch
-            es_rounds = max_es_rounds
-            best_model = copy.deepcopy(model)
-        else:
-            if es_rounds > 0:
-                es_rounds -=1
-            else:
-                print('EARLY-STOPPING !')
-                print('Best epoch found: nº {}'.format(best_epoch))
-                print('Exiting. . .')
-                break
-
+            #print("Epoch {}, training loss {}, validation loss {}".format(epoch, 
+            #                                                            training_plot[-1], 
+            #                                                            validation_plot[-1]))
     if do_plot:
         plt.figure(figsize=(16,12))
         plt.subplot(3, 1, 1)
@@ -103,9 +84,5 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_function, optimizer, bat
         plt.plot(list(range(len(training_plot))), training_plot, label='Train loss')
         plt.legend()
             
-    #plt.plot(list(range(len(training_plot))), training_plot, label='Train MSE')
-    #plt.legend()
-    #plt.show()
-    #plt.show()
     
-    return(best_model)
+    return(model, validation_plot[-1].item(), training_plot[-1])

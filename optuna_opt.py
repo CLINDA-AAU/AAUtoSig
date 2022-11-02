@@ -35,21 +35,22 @@ def optuna_tune(X, nsig, criterion, optimizer_alg):
         for train, test in kf.split(X):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:] 
-            train_AAUtoSig(
-                epochs = 1000, 
-                model = model, 
-                x_train = x_train, 
-                loss_function = loss_function, 
-                optimizer = optimizer,
-                batch_size = int(batch_size)
-                )
+            _, err, _ = train_AAUtoSig(
+                            epochs = 1000, 
+                            model = model, 
+                            x_train = x_train, 
+                            x_test = x_test,
+                            loss_function = loss_function, 
+                            optimizer = optimizer,
+                            batch_size = int(batch_size)
+                            )
             
-            cv_test_tensor = torch.tensor(x_test.values, 
-                                            dtype = torch.float32)
+            #cv_test_tensor = torch.tensor(x_test.values, 
+            #                                dtype = torch.float32)
 
-            cv_fit = model(cv_test_tensor)
+            #cv_fit = model(cv_test_tensor)
             
-            err = float(loss_function(cv_fit,cv_test_tensor).detach().numpy())
+            #err = float(loss_function(cv_fit,cv_test_tensor).detach().numpy())
             out_err.append(err)
         
 
