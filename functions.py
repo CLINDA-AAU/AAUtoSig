@@ -300,6 +300,14 @@ def cosine_HA(est_set, ref_set):
     _, col_ind  = linear_sum_assignment(-sim.T)
     return((sim.T[:,col_ind]).T, col_ind)
 
+
+
+def split_data(data, frac_1):
+  x_train = data.sample(frac = frac_1)
+  x_validation = data.drop(x_train.index)
+  return x_train, x_validation
+
+
 #A = np.random.rand(3,2)
 #B = np.random.rand(3,2)
 '''
@@ -331,3 +339,5 @@ for i in range(len(signatures)):
 fig.tight_layout()
 plt.show()
 '''
+
+

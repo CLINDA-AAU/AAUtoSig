@@ -13,7 +13,7 @@ from functions import simulate_counts
 
 
 #takes a data matrix nX96 and returns a dictionary of optimal hyperparameters
-def optuna_tune(X, nsig, criterion, optimizer_alg):
+def optuna_tune(X, nsig, loss_name, optimizer_alg):
 
     def objective(trial):
         #nsig = trial.suggest_int('nsig', 2, 15)
@@ -29,7 +29,6 @@ def optuna_tune(X, nsig, criterion, optimizer_alg):
         kf = model_selection.KFold()
 
         out_err = []
-        loss_function = criterion
 
         
         for train, test in kf.split(X):
@@ -40,9 +39,11 @@ def optuna_tune(X, nsig, criterion, optimizer_alg):
                             model = model, 
                             x_train = x_train, 
                             x_test = x_test,
-                            loss_function = loss_function, 
+                            loss_name = loss_name, 
                             optimizer = optimizer,
-                            batch_size = int(batch_size)
+                            batch_size = int(batch_size),
+                            do_plot=False,
+                            ES = False
                             )
             
             #cv_test_tensor = torch.tensor(x_test.values, 
@@ -63,7 +64,7 @@ def optuna_tune(X, nsig, criterion, optimizer_alg):
     
     study = optuna.create_study(direction="minimize")
     
-    study.optimize(objective, n_trials=16, timeout=600) 
+    study.optimize(objective, n_trials=10, timeout=600) 
     trial = study.best_trial
 
     return trial.params

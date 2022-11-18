@@ -14,7 +14,7 @@ from sklearn.decomposition import NMF
 
 from random import sample
 
-from functions import cosine_HA, simulate_counts
+from functions import cosine_HA, split_data
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
 import optuna
 from optuna_opt import optuna_tune
@@ -22,12 +22,16 @@ from optuna_opt import optuna_tune
 from joblib import Parallel, delayed
 import multiprocessing
 
-os.chdir("../..")
-#os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1")
+#os.chdir("../..")
+os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1")
 
-m = pd.read_csv(r"generated_data/SomaticSiMu/Lung-SCC_SBS96.csv")#.drop(['Unnamed: 0'], axis=1)
+#m = pd.read_csv(r"generated_data/SomaticSiMu/Lung-SCC_SBS96.csv")#.drop(['Unnamed: 0'], axis=1)
+m = pd.read_csv(r"generated_data/SomaticSiMu/Ovary_SBS96.csv")
 
-groundtruth = [line.strip("\n") for line in open(r"generated_data/SomaticSiMu/Lung-SCC_sbs_sigs.txt")]
+
+#groundtruth = [line.strip("\n") for line in open(r"generated_data/SomaticSiMu/Lung-SCC_sbs_sigs.txt")]
+groundtruth = [line.strip("\n") for line in open(r"generated_data/SomaticSiMu/Ovary-AdenoCA_sbs_sigs.txt")]
+
 groundtruth = pd.DataFrame([ast.literal_eval(x) for x in groundtruth])
 groundtruth[0] = groundtruth[0].astype(int)
 
@@ -38,15 +42,10 @@ sig_names = np.unique(groundtruth.drop([0], axis = 1).fillna(":("))[1::]
 
 COSMIC = pd.read_csv("COSMIC/COSMIC_v3.2_SBS_GRCh37.txt", sep = '\t', index_col=0)
 sigs = COSMIC[sig_names]
-
-def split_data(data, frac_1):
-  x_train = data.sample(frac = frac_1)
-  x_validation = data.drop(x_train.index)
-  return x_train, x_validation
   
 
 def out_errorNMF(train_df, validation_df, nsigs, true_sigs, criterion):
-   if criterion == "KL":
+   if criterion == "KL" or criterion == "PoNNL":
       beta = 1
    if criterion == "MSE":
       beta = 2
@@ -59,7 +58,7 @@ def out_errorNMF(train_df, validation_df, nsigs, true_sigs, criterion):
 
    ref_exposures = model.transform(X = validation_df)
    rec = np.dot(ref_exposures, signatures)
-   if criterion == "KL":
+   if criterion == "KL" or criterion == "PoNNL":
       res = scipy.special.kl_div(validation_df, rec)
       out_error = res.mean().mean()
    if criterion == "MSE":
@@ -68,28 +67,20 @@ def out_errorNMF(train_df, validation_df, nsigs, true_sigs, criterion):
    print(out_error)
    return cos_mean, out_error
   
-def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, criterion, optimizer_alg):
+def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, loss_name, optimizer_alg, i):
    model = AAUtoSig(nsigs)
 
-   # Validation using MSE Loss function
-   loss = criterion
 
-   params = optuna_tune(train_df, nsigs, criterion, optimizer_alg)
+   params = optuna_tune(train_df, nsigs, loss_name, optimizer_alg)
    if optimizer_alg == "Adam":
       optimizer = torch.optim.Adam(model.parameters(), lr = params['lr'])
    if optimizer_alg == "Tuned":
       optimizer =  getattr(torch.optim, params['optimizer'])(model.parameters(), lr = params['lr'])
-   _, out_error, _ = train_AAUtoSig(5000, model, train_df, validation_df, loss_function= loss, optimizer=optimizer, batch_size = params['batch_size'], do_plot = True)
+   _, out_error, _ = train_AAUtoSig(5000, model, train_df, validation_df, loss_name= loss_name, optimizer=optimizer, batch_size = params['batch_size'], do_plot = True, ES = False, i = i)
 
    signatures = model.dec1.weight.data    
    signatures = pd.DataFrame(signatures.numpy())
-   #validation_tensor = torch.tensor(validation_df.values,
-   #                                 dtype = torch.float32)
-   #rec_data = model(validation_tensor)
-   #out_error = criterion(validation_tensor, rec_data).detach().item()
-   #MSE = np.mean(((validation_df - rec_data.detach().numpy())**2).to_numpy())
-   #return(MSE)
-   
+
    if any(np.sum(signatures, axis = 0) == 0):
       #print(np.sum(signatures, axis = 0) )
       #print(signatures.loc[:, np.sum(signatures, axis = 0) == 0] )
@@ -98,12 +89,12 @@ def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, criterion, opt
    Y = cosine_HA(signatures.T, true_sigs.T)
    
    cos_mean = np.mean(Y[0].diagonal())
-   return cos_mean, out_error.item()
+   return cos_mean, out_error, i
     
   
-def performance_analysis(m, m_sigs, COSMIC, criterion, optimizer_alg):
-   m = m.sort_values('0')
-   mut_matrix = (m.drop(['Unnamed: 0', '0'], axis = 1)).T.sample(400)
+def performance_analysis(m, m_sigs, COSMIC, criterion, optimizer_alg, i):
+   m = m.sort_values('0') #hvorfor gør jeg nu det her - fordi det også er sådan signaturerne er organiseret
+   mut_matrix = (m.drop(['Unnamed: 0', '0'], axis = 1)).T.sample(1500)
    train_data, test_data = split_data(mut_matrix, 0.8)
   
    idx_train = train_data.index
@@ -129,54 +120,47 @@ def performance_analysis(m, m_sigs, COSMIC, criterion, optimizer_alg):
    sigs_train = COSMIC[sig_names_train]
 
    res_NMF = out_errorNMF(train_data, test_data, nsigs, sigs_train, criterion)
-
-   if criterion == "KL":
-      criterion_AE = torch.nn.KLDivLoss(reduction = 'batchmean')
-   if criterion == "MSE":
-      criterion_AE = torch.nn.MSELoss()
    
-   res_AE = out_error_AAUtoSig(train_data, test_data, nsigs, sigs_train, criterion_AE, optimizer_alg)
+   res_AE = out_error_AAUtoSig(train_data, test_data, nsigs, sigs_train, criterion, optimizer_alg, i)
    return(res_NMF + res_AE)
 
+n_sims = 50
+optimizer_alg = "MSE"
+#data = (m.drop(['Unnamed: 0', '0'], axis = 1)).T
 
 
-def analysis_to_plot(data, true_sigs, library, criterion, optimizer_alg, n_sims):
-   #res = [performance_analysis(data, true_sigs, library, criterion, optimizer_alg) for _ in range(n_sims)]   
-   res = Parallel(n_jobs = 4)(delayed(performance_analysis)(data, true_sigs, library, criterion, optimizer_alg) for _ in range(n_sims))
-   result = pd.DataFrame(res)
-   #print(res)
-   result.columns = ["NMF_perm", "outNMF", "AE_perm", "outAE" ]
-   
-   
-   #os.chdir("..")
-   
-   name = "Lung_SCC_" + str(criterion) + "_" + str(optimizer_alg) + "_nsim:" + str(n_sims)
-   matplotlib.use('Agg')
-   plt.boxplot(result[['outNMF', 'outAE']], labels = ["NMF", "AE"])
-   plt.title('NMF vs AE out of sample error on linearly simulated data')
-   plt.savefig(name + "_error.png", transparent=True)
-   plt.clf()
-   
-   
-   plt.boxplot(result[['NMF_perm', 'AE_perm']] ,labels = ["NMF", "AE"])
-   plt.title('NMF vs AE cosine values on SomaticSiMu simulated data')
-   plt.savefig(name + "_cosine.png", transparent=True)
-   plt.clf()
-   
-   plt.scatter(y = result['NMF_perm'], x = result['outNMF'], c = 'blue', label = 'NMF')
-   plt.scatter(y = result['AE_perm'], x = result['outAE'], c = 'red', label = 'AE')
-   plt.xlabel('Out of sample error')
-   plt.ylabel('mean diagonal cosine')
-   plt.title('NMF vs AE performance on SomaticSiMu simulated data')
-   plt.legend()
-   plt.savefig(name + "scatter.png", transparent=True)
-   os.chdir("../../../../..")
+
+res = Parallel(n_jobs = 10)(delayed(performance_analysis)(m, groundtruth, COSMIC, optimizer_alg, "Adam", i) for i in range(n_sims))
+result = pd.DataFrame(res)
+result.columns = ["NMF_perm", "outNMF", "AE_perm", "outAE" , "idx"]
+result.to_csv('result.csv')
+print(result)
+name = "Lung_SCC_"+ optimizer_alg + "_ADAM_nsim:" + str(n_sims)
 
 
-data = (m.drop(['Unnamed: 0', '0'], axis = 1)).T
+matplotlib.use('Agg')
+plt.boxplot(result[['outNMF', 'outAE']], labels = ["NMF", "AE"])
+plt.title('NMF vs AE out of sample error on linearly simulated data')
+plt.savefig(name + "_error.png", transparent=True)
+plt.clf()
 
-params = [("MSE", "Adam"), ("KL", "Adam"), ("MSE", "Tuned")]
 
-Parallel(n_jobs = 3)(delayed(analysis_to_plot)(m, groundtruth, COSMIC, p[0], p[1], 3) for p in params)
+plt.boxplot(result[['NMF_perm', 'AE_perm']] ,labels = ["NMF", "AE"])
+plt.title('NMF vs AE cosine values on SomaticSiMu simulated data')
+plt.savefig(name + "_cosine.png", transparent=True)
+plt.clf()
+
+plt.scatter(y = result['NMF_perm'], x = result['outNMF'], c = 'blue', label = 'NMF')
+plt.scatter(y = result['AE_perm'], x = result['outAE'], c = 'red', label = 'AE')
+plt.xlabel('Out of sample error')
+plt.ylabel('mean diagonal cosine')
+plt.title('NMF vs AE performance on SomaticSiMu simulated data')
+plt.legend()
+plt.savefig(name + "scatter.png", transparent=True)
+
+
+#params = [("MSE", "Adam"), ("KL", "Adam"), ("MSE", "Tuned")]
+
+#Parallel(n_jobs = 3)(delayed(analysis_to_plot)(m, groundtruth, COSMIC, p[0], p[1], 3) for p in params)
 
 #analysis_to_plot(m, groundtruth, COSMIC, "MSE", "Adam", 1)
