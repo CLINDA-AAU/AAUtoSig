@@ -1,13 +1,11 @@
-import math
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import scipy.spatial as sp
 from random import sample
 from itertools import permutations
 from scipy.optimize import linear_sum_assignment
-import sklearn.metrics 
+import os
 
 
 # Pei et al. uses data on the pentanucleotide from to extract the mutational signatures. There
@@ -37,7 +35,10 @@ def expand_SBS(sig):
 
 def simulate_counts(nsigs, npatients, pentanucelotide = False, sig_names = None):
   #Arrange COSMIC to be the same ordering as count data
+  cwd = os.getcwd()
+  print(cwd)
   COSMIC = pd.read_csv("COSMIC/COSMIC_v3.2_SBS_GRCh37.txt", sep = '\t', index_col=0)
+  print("load COSMIC")
   context = COSMIC.index
   mutation = [s[2:5] for s in context]
   COSMIC['mutation'] = mutation
