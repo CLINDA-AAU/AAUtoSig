@@ -124,7 +124,7 @@ def performance_analysis(m, m_sigs, COSMIC, criterion, optimizer_alg, i):
    res_AE = out_error_AAUtoSig(train_data, test_data, nsigs, sigs_train, criterion, optimizer_alg, i)
    return(res_NMF + res_AE)
 
-n_sims = 50
+n_sims = 30
 optimizer_alg = "MSE"
 #data = (m.drop(['Unnamed: 0', '0'], axis = 1)).T
 
@@ -133,9 +133,11 @@ optimizer_alg = "MSE"
 res = Parallel(n_jobs = 10)(delayed(performance_analysis)(m, groundtruth, COSMIC, optimizer_alg, "Adam", i) for i in range(n_sims))
 result = pd.DataFrame(res)
 result.columns = ["NMF_perm", "outNMF", "AE_perm", "outAE" , "idx"]
+cwd = os.getcwd()
+print(cwd)
 result.to_csv('result.csv')
 print(result)
-name = "Lung_SCC_"+ optimizer_alg + "_ADAM_nsim:" + str(n_sims)
+name = "Ovary_"+ optimizer_alg + "_ADAM_nsim:" + str(n_sims)
 
 
 matplotlib.use('Agg')
