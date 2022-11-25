@@ -35,7 +35,7 @@ def optuna_tune(X, nsig, loss_name, optimizer_alg):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:] 
             _, err, _ = train_AAUtoSig(
-                            epochs = 1000, 
+                            epochs = 500, 
                             model = model, 
                             x_train = x_train, 
                             x_test = x_test,
