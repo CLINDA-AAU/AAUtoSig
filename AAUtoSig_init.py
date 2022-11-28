@@ -26,7 +26,7 @@ class AAUtoSig(torch.nn.Module):
 
     def forward(self, x):
         x = self.enc1(x)
-        x = self.dec1(x)
+        x = F.relu(self.dec1(x))
         return x
         
     # Model Initialization
@@ -39,7 +39,7 @@ def kl_poisson(p, q): # p = inputs, q =  outputs?
                                   
 def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_size, do_plot=False, ES = True, i = None):
     if i is None:
-        i = date.today()    
+        i = str(date.today())
     x_train_tensor = torch.tensor(x_train.values, 
                               dtype = torch.float32)
     x_test_tensor = torch.tensor(x_test.values, 
@@ -126,7 +126,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_s
         plt.plot(list(range(len(training_plot))), validation_plot, label='Validation loss')
         plt.plot(list(range(len(training_plot))), training_plot, label='Train loss')
         plt.legend()
-        plt.savefig(str(i) + "LOSS:" + loss_name + "_lr:"  +str(np.round(lr, 5))+  "val_curve.png", transparent=True)
+        plt.savefig(i + "LOSS:" + loss_name + "_lr:" + str(np.round(lr, 5))+  "val_curve.png", transparent=True)
         plt.clf()
         
     if not ES:
