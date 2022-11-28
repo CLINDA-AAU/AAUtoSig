@@ -103,7 +103,7 @@ print("analysis_done")
 result = pd.DataFrame(res)
 result.columns = ["NMF_perm", "outNMF", "AE_perm", "outAE" ]
 print(result)
-name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + n_sigs + "_epochs:" + str(epochs)
+name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs)
 
 matplotlib.use('Agg')
 fig=plt.figure()

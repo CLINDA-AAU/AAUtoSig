@@ -68,6 +68,10 @@ def out_errorNMF(train_df, validation_df, nsigs, true_sigs, criterion):
    return cos_mean, out_error
   
 def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, loss_name, optimizer_alg, i):
+   if len(i) == 1:
+      i = "0" + str(i)
+   if len(i) == 2:
+      i = str(i)
    model = AAUtoSig(nsigs)
 
 
