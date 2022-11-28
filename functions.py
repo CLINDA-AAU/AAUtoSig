@@ -35,10 +35,7 @@ def expand_SBS(sig):
 
 def simulate_counts(nsigs, npatients, pentanucelotide = False, sig_names = None):
   #Arrange COSMIC to be the same ordering as count data
-  cwd = os.getcwd()
-  print(cwd)
   COSMIC = pd.read_csv("COSMIC/COSMIC_v3.2_SBS_GRCh37.txt", sep = '\t', index_col=0)
-  print("load COSMIC")
   context = COSMIC.index
   mutation = [s[2:5] for s in context]
   COSMIC['mutation'] = mutation
@@ -216,7 +213,8 @@ def simulate_mixedBIG(nsigs, npatients):
 
 
 
-def plotsigs(context, mutation, signatures, nsigs, title):
+def plotsigs(context, signatures, nsigs, title):
+    mutation = [s[2:5] for s in context]
     colors = {'C>A': 'r', 'C>G': 'b', 'C>T': 'g', 
                 'T>A' : 'y', 'T>C': 'c','T>G' : 'm' }
     labels = list(colors.keys())
