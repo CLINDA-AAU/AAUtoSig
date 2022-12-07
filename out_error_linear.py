@@ -86,10 +86,10 @@ def performance_analysis(npatients, nsigs, loss_name, optimizer_name, epochs):
 
 
 
-n_sims = 10
-n_patients = 2000
+n_sims = 50
+n_patients = 6000
 n_sigs = 7
-epochs = 500
+epochs = 5000
 loss_name = "MSE"
 optimizer_name = "Adam"
 #data = (m.drop(['Unnamed: 0', '0'], axis = 1)).T
@@ -98,13 +98,13 @@ optimizer_name = "Adam"
 #os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1/scripts/AAUtoSig")
 cwd = os.getcwd()
 print(cwd)
-res = Parallel(n_jobs = 5)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs) for i in range(n_sims))
+res = Parallel(n_jobs = 10)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs) for i in range(n_sims))
 print("analysis_done")
 result = pd.DataFrame(res)
 result.columns = ["NMF_perm", "outNMF", "AE_perm", "outAE" ]
 print(result)
 name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs)
-result.to_csv(name + '.csv')
+#result.to_csv(name + '.csv')
 
 matplotlib.use('Agg')
 fig=plt.figure()

@@ -23,7 +23,7 @@ from optuna_opt import optuna_tune
 import os
 
 
-def train_AAUtoSig(epochs, model, x_train, loss_name, optimizer, batch_size):
+def train_AAUtoSig(epochs, model, x_train, loss_name, optimizer, batch_size, non_negative):
     x_train_tensor = torch.tensor(x_train.values, 
                               dtype = torch.float32)
 
@@ -58,8 +58,12 @@ def train_AAUtoSig(epochs, model, x_train, loss_name, optimizer, batch_size):
           train_loss += loss.item()
         train_loss_total = train_loss/len(trainloader)
         with torch.no_grad():
-            for p in model.parameters():#.dec1.weight:
-                p.clamp_(min = 0)
+            if non_negative == "all":
+                for p in model.parameters():#model.dec1.weight:
+                    p.clamp_(min = 0)
+            if non_negative == "bases":
+                for p in model.dec1.weight:
+                    p.clamp_(min = 0)
             model.eval()        
     return(model, train_loss_total)
 
@@ -78,7 +82,7 @@ def in_errorNMF(train_df, nsigs, true_sigs, criterion, epochs):
   cos_mean = np.mean(cos_NMF.diagonal())
   return cos_mean, in_error
 
-def in_error_AAUtoSig(train_df, nsigs, true_sigs, loss_name, optimizer_name, epochs):
+def in_error_AAUtoSig(train_df, nsigs, true_sigs, loss_name, optimizer_name, epochs, non_negative):
     #bemærk her at du tuner til at performe godt out of sample 
     params = optuna_tune(train_df, nsigs, loss_name, optimizer_name)
     model = AAUtoSig(96, nsigs)
@@ -89,7 +93,7 @@ def in_error_AAUtoSig(train_df, nsigs, true_sigs, loss_name, optimizer_name, epo
       optimizer =  getattr(torch.optim, params['optimizer'])(model.parameters(), lr = params['lr'])
    
 
-    _, in_error = train_AAUtoSig(epochs, model, train_df, loss_name= loss_name, optimizer=optimizer, batch_size = params['batch_size'])
+    _, in_error = train_AAUtoSig(epochs, model, train_df, loss_name= loss_name, optimizer=optimizer, batch_size = params['batch_size'], non_negative = non_negative)
 
     signatures = model.dec1.weight.data    
     signatures = pd.DataFrame(signatures.numpy())
@@ -99,33 +103,33 @@ def in_error_AAUtoSig(train_df, nsigs, true_sigs, loss_name, optimizer_name, epo
       
     return cos_mean, in_error
 
-def performance_analysis(npatients, nsigs, loss_name, optimizer_name, epochs):
+def performance_analysis(npatients, nsigs, loss_name, optimizer_name, epochs, non_negative):
   mut_matrix_l, signatures_l, _ = simulate_counts(nsigs, npatients)
   train_data_l = mut_matrix_l.T/mut_matrix_l.T.max().max()
   cosineNMF_perm, outNMF = in_errorNMF(train_data_l, nsigs, signatures_l, criterion = loss_name, epochs = epochs)
   print("NMF")
-  cosineAE_perm, outAE = in_error_AAUtoSig(train_data_l, nsigs, signatures_l, loss_name = loss_name, optimizer_name = optimizer_name, epochs = epochs)
+  cosineAE_perm, outAE = in_error_AAUtoSig(train_data_l, nsigs, signatures_l, loss_name = loss_name, optimizer_name = optimizer_name, epochs = epochs, non_negative = non_negative)
   print("AE")
   return [cosineNMF_perm, outNMF, cosineAE_perm, outAE]
 
 
 
-n_sims = 10
-n_patients = 500
+n_sims = 50
+n_patients = 5000
 n_sigs = 7
-epochs = 500
+epochs = 5000
 loss_name = "MSE"
 optimizer_name = "Adam"
 #data = (m.drop(['Unnamed: 0', '0'], axis = 1)).T
 
 
 os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1/scripts/AAUtoSig")
-res = Parallel(n_jobs = 3)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs) for i in range(n_sims))
+res = Parallel(n_jobs = 10)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs, "all") for i in range(n_sims))
 print("analysis_done")
 result = pd.DataFrame(res)
 result.columns = ["NMF_perm", "inNMF", "AE_perm", "inAE" ]
 print(result)
-name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs)
+name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs) + " NN:" + non_negative
 
 matplotlib.use('Agg')
 fig=plt.figure()
