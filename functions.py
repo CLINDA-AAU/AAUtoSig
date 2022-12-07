@@ -33,6 +33,7 @@ def expand_SBS(sig):
 
 
 
+
 def simulate_counts(nsigs, npatients, pentanucelotide = False, sig_names = None):
   #Arrange COSMIC to be the same ordering as count data
   COSMIC = pd.read_csv("COSMIC/COSMIC_v3.2_SBS_GRCh37.txt", sep = '\t', index_col=0)

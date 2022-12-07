@@ -11,22 +11,23 @@ from datetime import date
 
 
 class AAUtoSig(torch.nn.Module):
-    def __init__(self, dim1):
+    def __init__(self, feature_dim, latent_dim):
     
         super().__init__()
         
         # Building an linear encoder
         # 96 => dim1 => dim2
-        self.enc1 = torch.nn.Linear(96, dim1, bias = False)
+        self.enc1 = torch.nn.Linear(feature_dim, latent_dim, bias = False)
           
         # Building an linear decoder 
         # dim ==> 96
-        self.dec1 = torch.nn.Linear(dim1, 96, bias = False)
+        self.dec1 = torch.nn.Linear(latent_dim, feature_dim, bias = False)
             
 
     def forward(self, x):
         x = self.enc1(x)
-        x = F.relu(self.dec1(x))
+        x = self.dec1(x)
+        #x = F.relu(self.dec1(x))
         return x
         
     # Model Initialization
@@ -88,7 +89,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_s
           train_loss += loss.item()
         training_plot.append(train_loss/len(trainloader))
         with torch.no_grad():
-            for p in model.dec1.weight:
+            for p in model.parameters():#model.dec1.weight:
                 p.clamp_(min = 0)
             model.eval()        
             inputs  = x_test_tensor

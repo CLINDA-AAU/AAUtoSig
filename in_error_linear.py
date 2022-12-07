@@ -58,10 +58,9 @@ def train_AAUtoSig(epochs, model, x_train, loss_name, optimizer, batch_size):
           train_loss += loss.item()
         train_loss_total = train_loss/len(trainloader)
         with torch.no_grad():
-            #for p in model.dec1.weight:
-            #    p.clamp_(min = 0)
+            for p in model.parameters():#.dec1.weight:
+                p.clamp_(min = 0)
             model.eval()        
-        
     return(model, train_loss_total)
 
 
@@ -82,7 +81,7 @@ def in_errorNMF(train_df, nsigs, true_sigs, criterion, epochs):
 def in_error_AAUtoSig(train_df, nsigs, true_sigs, loss_name, optimizer_name, epochs):
     #bemærk her at du tuner til at performe godt out of sample 
     params = optuna_tune(train_df, nsigs, loss_name, optimizer_name)
-    model = AAUtoSig(nsigs)
+    model = AAUtoSig(96, nsigs)
 
     if optimizer_name == "Adam":
       optimizer = torch.optim.Adam(model.parameters(), lr = params['lr'])
@@ -157,5 +156,6 @@ plt.xlabel('reconstruction error')
 
 ax1.get_shared_x_axes().join(ax1, ax3)
 ax1.get_shared_y_axes().join(ax1, ax2)
-
+cwd = os.getcwd()
+print(cwd)
 plt.savefig(name + "scatter.png", transparent=True)

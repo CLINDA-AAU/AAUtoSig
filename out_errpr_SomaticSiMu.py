@@ -24,7 +24,8 @@ import multiprocessing
 
 #os.chdir("../..")
 os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1")
-
+cwd = os.getcwd()
+print(cwd)
 #m = pd.read_csv(r"generated_data/SomaticSiMu/Lung-SCC_SBS96.csv")#.drop(['Unnamed: 0'], axis=1)
 m = pd.read_csv(r"generated_data/SomaticSiMu/Ovary_SBS96.csv")
 
@@ -68,11 +69,12 @@ def out_errorNMF(train_df, validation_df, nsigs, true_sigs, criterion):
    return cos_mean, out_error
   
 def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, loss_name, optimizer_alg, i):
-   if len(i) == 1:
+   if len(str(i)) == 1:
       i = "0" + str(i)
-   if len(i) == 2:
+   if len(str(i)) == 2:
       i = str(i)
-   model = AAUtoSig(nsigs)
+
+   model = AAUtoSig(96, nsigs)
 
 
    params = optuna_tune(train_df, nsigs, loss_name, optimizer_alg)
@@ -80,7 +82,7 @@ def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, loss_name, opt
       optimizer = torch.optim.Adam(model.parameters(), lr = params['lr'])
    if optimizer_alg == "Tuned":
       optimizer =  getattr(torch.optim, params['optimizer'])(model.parameters(), lr = params['lr'])
-   _, out_error, _ = train_AAUtoSig(5000, model, train_df, validation_df, loss_name= loss_name, optimizer=optimizer, batch_size = params['batch_size'], do_plot = True, ES = False, i = i)
+   _, out_error, _ = train_AAUtoSig(500, model, train_df, validation_df, loss_name= loss_name, optimizer=optimizer, batch_size = params['batch_size'], do_plot = True, ES = False, i = i)
 
    signatures = model.dec1.weight.data    
    signatures = pd.DataFrame(signatures.numpy())

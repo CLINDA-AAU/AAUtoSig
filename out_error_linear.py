@@ -21,8 +21,6 @@ import torch
 from optuna_opt import optuna_tune
 import os
 
-print(" installed")
-
 def out_errorNMF(train_df, validation_df, nsigs, true_sigs, criterion, epochs):
   if criterion == "KL" or criterion == "PoNNL":
     beta = 1
@@ -50,7 +48,7 @@ def out_error_AAUtoSig(train_df, validation_df, nsigs, true_sigs, loss_name, opt
     train = train_df.columns
     sigs = true_sigs.index 
     params = optuna_tune(train_df, nsigs, loss_name, optimizer_name)
-    model = AAUtoSig(nsigs)
+    model = AAUtoSig(96, nsigs)
 
     if optimizer_name == "Adam":
       optimizer = torch.optim.Adam(model.parameters(), lr = params['lr'])
@@ -88,8 +86,8 @@ def performance_analysis(npatients, nsigs, loss_name, optimizer_name, epochs):
 
 
 
-n_sims = 30
-n_patients = 500
+n_sims = 10
+n_patients = 2000
 n_sigs = 7
 epochs = 500
 loss_name = "MSE"
@@ -97,13 +95,16 @@ optimizer_name = "Adam"
 #data = (m.drop(['Unnamed: 0', '0'], axis = 1)).T
 
 
-os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1/scripts/AAUtoSig")
+#os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1/scripts/AAUtoSig")
+cwd = os.getcwd()
+print(cwd)
 res = Parallel(n_jobs = 5)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs) for i in range(n_sims))
 print("analysis_done")
 result = pd.DataFrame(res)
 result.columns = ["NMF_perm", "outNMF", "AE_perm", "outAE" ]
 print(result)
 name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs)
+result.to_csv(name + '.csv')
 
 matplotlib.use('Agg')
 fig=plt.figure()

@@ -20,7 +20,7 @@ def optuna_tune(X, nsig, loss_name, optimizer_alg):
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
         lr = trial.suggest_float('lr',1e-8, 1e-1, log=True)
         
-        model = AAUtoSig(dim1 = nsig)
+        model = AAUtoSig(96, nsig)
         if optimizer_alg == "Adam":
           optimizer = torch.optim.Adam(model.parameters(), lr = lr)
         if optimizer_alg == "Tuned":
