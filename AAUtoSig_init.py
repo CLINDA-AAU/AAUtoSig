@@ -38,7 +38,7 @@ def get_lr(optimizer):
 def kl_poisson(p, q): # p = inputs, q =  outputs?
     return torch.mean( torch.where(p != 0, p * torch.log(p / q) - p + q, 0))
                                   
-def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_size, do_plot=False, ES = True, i = None):
+def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_size, do_plot=False, ES = True, i = None, non_negative = None):
     if i is None:
         i = str(date.today())
     x_train_tensor = torch.tensor(x_train.values, 
@@ -49,13 +49,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_s
     trainloader = torch.utils.data.DataLoader(x_train_tensor, 
                                               batch_size=batch_size, 
                                               shuffle=True)
-   
-    #if loss_name == "KL":
-      #criterion = kl_poisson() #torch.nn.KLDivLoss(reduction = 'batchmean')
-    if loss_name == "MSE":
-       criterion = torch.nn.MSELoss()
-    if loss_name == "PoNNL":
-       criterion = torch.nn.PoissonNLLLoss()
+
     
     
     if ES:
@@ -73,12 +67,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_s
         for data in trainloader:
           # Output of Autoencoder
           reconstructed = model(data)#.view(-1,96)
-            
-          # Calculating the loss function,
-          if loss_name == "KL":
-            loss = kl_poisson(reconstructed, data)
-          else:#if loss_name == "MSE":
-            loss = criterion(reconstructed, data)#.view(-1,96)
+          loss = criterion(reconstructed, data)#.view(-1,96)
           
           # The gradients are set to zero,
           # the the gradient is computed and stored.
@@ -89,17 +78,17 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_s
           train_loss += loss.item()
         training_plot.append(train_loss/len(trainloader))
         with torch.no_grad():
-            for p in model.parameters():#model.dec1.weight:
-                p.clamp_(min = 0)
+            if non_negative == "all":
+                for p in model.parameters():#model.dec1.weight:
+                    p.clamp_(min = 0)
+            if non_negative == "bases":
+                for p in model.dec1.weight:
+                    p.clamp_(min = 0)
             model.eval()        
             inputs  = x_test_tensor
             outputs = model(inputs)
 
-            if loss_name == "KL":
-               valid_loss = kl_poisson(inputs, outputs)
-               #valid_loss = criterion(torch.log(outputs), inputs) + torch.mean(outputs) - torch.mean(inputs)
-            else:#if loss_name == "MSE":
-               valid_loss = criterion(outputs, inputs)#.view(-1,96)
+            valid_loss = criterion(outputs, inputs)#.view(-1,96)
 
         
             validation_plot.append(valid_loss)
@@ -120,14 +109,15 @@ def train_AAUtoSig(epochs, model, x_train, x_test, loss_name, optimizer, batch_s
                     print('Exiting. . .')
                     break
     if do_plot:
-        matplotlib.use('Agg')
+        #matplotlib.use('Agg')
         plt.figure(figsize=(16,12))
         plt.subplot(3, 1, 1)
-        plt.title('LOSS:' + loss_name  + '_lr:' + str(np.round(lr, 5)))
+        plt.title('_lr:' + str(np.round(lr, 5)))
         plt.plot(list(range(len(training_plot))), validation_plot, label='Validation loss')
         plt.plot(list(range(len(training_plot))), training_plot, label='Train loss')
         plt.legend()
-        plt.savefig(i + "LOSS:" + loss_name + "_lr:" + str(np.round(lr, 5))+  "val_curve.png", transparent=True)
+        plt.show()
+        #plt.savefig(i + "_lr:" + str(np.round(lr, 5))+  "val_curve.png", transparent=True)
         plt.clf()
         
     if not ES:
