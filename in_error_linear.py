@@ -23,7 +23,7 @@ from optuna_opt import optuna_tune
 import os
 
 
-def train_AAUtoSig(epochs, model, x_train, loss_name, optimizer, batch_size, non_negative):
+def train_AAUtoSig(epochs, model, x_train, criterion, optimizer, batch_size, non_negative):
     x_train_tensor = torch.tensor(x_train.values, 
                               dtype = torch.float32)
 
@@ -31,13 +31,6 @@ def train_AAUtoSig(epochs, model, x_train, loss_name, optimizer, batch_size, non
     trainloader = torch.utils.data.DataLoader(x_train_tensor, 
                                               batch_size=batch_size, 
                                               shuffle=True)
-   
-    #if loss_name == "KL":
-      #criterion = kl_poisson() #torch.nn.KLDivLoss(reduction = 'batchmean')
-    if loss_name == "MSE":
-       criterion = torch.nn.MSELoss()
-    if loss_name == "PoNNL":
-       criterion = torch.nn.PoissonNLLLoss()
     
     
 
@@ -85,7 +78,7 @@ def in_errorNMF(train_df, nsigs, true_sigs, criterion, epochs):
 def in_error_AAUtoSig(train_df, nsigs, true_sigs, loss_name, optimizer_name, epochs, non_negative):
     #bemærk her at du tuner til at performe godt out of sample 
     params = optuna_tune(train_df, nsigs, loss_name, optimizer_name)
-    model = AAUtoSig(96, nsigs)
+    model = AAUtoSig(96, nsigs, non_negativity = "ReLU")
 
     if optimizer_name == "Adam":
       optimizer = torch.optim.Adam(model.parameters(), lr = params['lr'])
@@ -124,12 +117,12 @@ optimizer_name = "Adam"
 
 
 os.chdir(r"dfs_forskning/AUH-HAEM-FORSK-MutSigDLBCL222/article_1/scripts/AAUtoSig")
-res = Parallel(n_jobs = 10)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs, "all") for i in range(n_sims))
+res = Parallel(n_jobs = 10)(delayed(performance_analysis)(n_patients, n_sigs, loss_name, optimizer_name, epochs, None) for i in range(n_sims))
 print("analysis_done")
 result = pd.DataFrame(res)
 result.columns = ["NMF_perm", "inNMF", "AE_perm", "inAE" ]
 print(result)
-name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs) + " NN:" + non_negative
+name = "Linear_"+ loss_name + "_ADAM_nsim:" + str(n_sims) + "_n_pat:" + str(n_patients) + "_nsigs:" + str(n_sigs) + "_epochs:" + str(epochs) + " NN:" + "none"
 
 matplotlib.use('Agg')
 fig=plt.figure()

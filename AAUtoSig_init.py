@@ -10,13 +10,17 @@ import copy
 from datetime import date
 
 
+
+
 class AAUtoSig(torch.nn.Module):
-    def __init__(self, feature_dim, latent_dim):
+    def __init__(self, feature_dim, latent_dim, non_negativity = "ReLU"):
     
         super().__init__()
         
+
+        self.non_negativity = non_negativity
         # Building an linear encoder
-        # 96 => dim1 => dim2
+        # 96 => dim
         self.enc1 = torch.nn.Linear(feature_dim, latent_dim, bias = False)
           
         # Building an linear decoder 
@@ -25,9 +29,8 @@ class AAUtoSig(torch.nn.Module):
             
 
     def forward(self, x):
-        x = self.enc1(x)
-        x = self.dec1(x)
-        #x = F.relu(self.dec1(x))
+        x = F.relu(self.enc1(x)) if not self.non_negativity else self.enc1(x)
+        x = F.relu(self.dec1(x)) if not self.non_negativity else self.dec1(x)
         return x
         
     # Model Initialization
@@ -38,7 +41,7 @@ def get_lr(optimizer):
 def kl_poisson(p, q): # p = inputs, q =  outputs?
     return torch.mean( torch.where(p != 0, p * torch.log(p / q) - p + q, 0))
                                   
-def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_size, do_plot=False, ES = True, i = None, non_negative = None):
+def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_size, do_plot=True, ES = False, i = None, non_negative = "all"):
     if i is None:
         i = str(date.today())
     x_train_tensor = torch.tensor(x_train.values, 
