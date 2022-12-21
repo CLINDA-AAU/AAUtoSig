@@ -13,7 +13,7 @@ from functions import simulate_counts
 
 
 #takes a data matrix nX96 and returns a dictionary of optimal hyperparameters
-def optuna_tune(X, nsig, loss_name, optimizer_alg):
+def optuna_tune(X, nsig, criterion):
 
     def objective(trial):
         #nsig = trial.suggest_int('nsig', 2, 15)
@@ -21,11 +21,10 @@ def optuna_tune(X, nsig, loss_name, optimizer_alg):
         lr = trial.suggest_float('lr',1e-8, 1e-1, log=True)
         
         model = AAUtoSig(96, nsig)
-        if optimizer_alg == "Adam":
-          optimizer = torch.optim.Adam(model.parameters(), lr = lr)
-        if optimizer_alg == "Tuned":
-          optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
-          optimizer = getattr(torch.optim, optimizer_name)(model.parameters(), lr=lr)
+        optimizer = torch.optim.Adam(model.parameters(), lr = lr)
+        #if optimizer_alg == "Tuned":
+        #  optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
+        #  optimizer = getattr(torch.optim, optimizer_name)(model.parameters(), lr=lr)
         kf = model_selection.KFold()
 
         out_err = []
@@ -39,7 +38,7 @@ def optuna_tune(X, nsig, loss_name, optimizer_alg):
                             model = model, 
                             x_train = x_train, 
                             x_test = x_test,
-                            loss_name = loss_name, 
+                            criterion = criterion, 
                             optimizer = optimizer,
                             batch_size = int(batch_size),
                             do_plot=False,
