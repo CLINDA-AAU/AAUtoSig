@@ -2,7 +2,7 @@ import os
 import sys
 
 import matplotlib
-matplotlib.rcParams.update({'font.size': 22})
+matplotlib.rcParams.update({'font.size': 12})
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 import pandas as pd
@@ -108,7 +108,7 @@ def performance_analysis(m, nsigs, epochs, i):
    return(res)
 
 
-n_sims = 50
+n_sims = 2
 n_sigs = 7
 epochs = 1000
 loss_name = "MSE"
@@ -135,8 +135,10 @@ fig.set_figwidth(15)
 
 f, ax = plt.subplots()
 points = ax.scatter(y = result['cosine'], x = result['error'], c = result['exp'] ,cmap="plasma")
-#f.ylabel('mean diagonal cosine')
-f.colorbar(points)
+ax.set_xlabel('difference in reconstruction error (NMF-AE)')
+ax.set_ylabel('mean diagonal cosine')
+f.colorbar(points, label = 'Difference in exposures')
+ax.legend()
 plt.show()
 
 '''
