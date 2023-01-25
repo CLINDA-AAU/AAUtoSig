@@ -7,7 +7,9 @@ import torch
 from sklearn.decomposition import NMF
 # ---------------------- CONVEX NMF algorithm -------------------------
 def convex_nmf(X, rank, iter):
+    
     n = X.shape[1]
+    '''
     kmeans = KMeans(n_clusters=rank).fit(X.T)
 
     #The Kmeans labeling does not make sense when X is used the observations as rows
@@ -18,6 +20,9 @@ def convex_nmf(X, rank, iter):
     W = G@np.diag(1/np.array(n_vec)) #n*k  
     W = W.to_numpy()
     G = G.to_numpy()
+    '''
+    W = np.random.rand(6, rank)
+    G = np.random.rand(6,rank)
     XtX = X.T@X
 
     for _ in range(iter):
@@ -28,7 +33,7 @@ def convex_nmf(X, rank, iter):
         G = G * np.sqrt(XtXW/GWtXtXW)
         W = W * np.sqrt(XtXG/XtXWGtG)
     return(G, W)
-'''
+
 fig1, axs1 = plt.subplots(3,2, width_ratios = [4,1])
 for i,n in enumerate([10, 50, 100]):
 
@@ -73,6 +78,7 @@ for i,n in enumerate([10, 50, 100]):
     axs1[i,0].plot(list(range(total_n)), exposures_AE.iloc[:,0], '-o', color = "red", label = "AE")
     axs1[i,0].plot(list(range(total_n)), exposures_AE.iloc[:,1], '-o', color = "lightcoral", label = "AE")
     axs1[i,0].set_title('n = ' + str(total_n))
+    axs1[i,0].set_ylabel("Exposures")
 
     axs1[i,1].plot(list(range(6)), signature1, '-o', color = "forestgreen", label = "True")
     axs1[i,1].plot(list(range(6)), signature2, '-o', color = "lightgreen", label = "True")
@@ -81,10 +87,14 @@ for i,n in enumerate([10, 50, 100]):
     axs1[i,1].plot(list(range(6)), signatures_AE.iloc[0,:], '-o', color = "red", label = "AE")
     axs1[i,1].plot(list(range(6)), signatures_AE.iloc[1,:], '-o', color = "lightcoral",label = "AE")
     axs1[i,1].set_title('n = ' + str(total_n))
-    if i == 0:
-        axs1[i,0].set_title("Exposures \n n= " +  str(total_n))
-        axs1[i,1].set_title("Signatures\n n= " +  str(total_n))
-        axs1[i,1].legend()
+    axs1[i,1].set_ylabel("Signature intensity")
+
+    axs1[0,0].set_title("Exposures \n n= " +  str(total_n))
+    axs1[0,1].set_title("Signatures\n n= " +  str(total_n))
+    axs1[0,1].legend()
+
+    axs1[2,0].set_xlabel("Patients")
+    axs1[2,1].set_xlabel("Mutation type")
 plt.show()
 '''
 
@@ -144,16 +154,25 @@ for i, est in enumerate(((exposures_NMF, signatures_NMF), (exposures_cvx, signat
     axs1[i,0].plot(list(range(total_n)), exp[:,0], '-o', color = "blue", label = "estimated")
     axs1[i,0].plot(list(range(total_n)), exp[:,1], '-o', color = "navy", label = "estimated")
     axs1[i,0].set_title(names[i])
+    axs1[i,0].set_ylabel("Exposures")
+
 
     axs1[i,1].plot(list(range(6)), signature1, '-o', color = "forestgreen", label = "True")
     axs1[i,1].plot(list(range(6)), signature2, '-o', color = "lightgreen", label = "True")
     axs1[i,1].plot(list(range(6)), sig[0,:], '-o', color = "blue", label = "estimated")
     axs1[i,1].plot(list(range(6)), sig[1,:], '-o', color = "navy" , label = "estimated")
     axs1[i,1].set_title(names[i])
-    if i == 0:
-        axs1[i,0].set_title("Exposures \n" +  names[i])
-        axs1[i,1].set_title("Signatures\n" + names[i])
-        axs1[i,1].legend()
+    axs1[i,1].set_ylabel("Signature itensity")
+
+    axs1[0,0].set_title("Exposures \n" +  names[i])
+    axs1[0,1].set_title("Signatures\n" + names[i])
+    axs1[0,1].legend()
+
+    axs1[2,0].set_xlabel("Patients")
+    axs1[2,1].set_xlabel("Mutation type")
+ 
+
 
 
 plt.show()
+'''
