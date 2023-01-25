@@ -13,12 +13,12 @@ from datetime import date
 
 
 class AAUtoSig(torch.nn.Module):
-    def __init__(self, feature_dim, latent_dim, non_negativity = "ReLU"):
+    def __init__(self, feature_dim, latent_dim, relu_activation = [False, False]):
     
         super().__init__()
         
 
-        self.non_negativity = non_negativity
+        self.relu_activation = relu_activation
         # Building an linear encoder
         # 96 => dim
         self.enc1 = torch.nn.Linear(feature_dim, latent_dim, bias = False)
@@ -29,8 +29,8 @@ class AAUtoSig(torch.nn.Module):
             
 
     def forward(self, x):
-        x = F.relu(self.enc1(x)) if not self.non_negativity else self.enc1(x)
-        x = F.relu(self.dec1(x)) if not self.non_negativity else self.dec1(x)
+        x = F.relu(self.enc1(x)) if self.relu_activation[0] else self.enc1(x)
+        x = F.relu(self.dec1(x)) if self.relu_activation[1] else self.dec1(x)
         return x
         
     # Model Initialization
@@ -73,11 +73,11 @@ def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_s
           loss = criterion(reconstructed, data)#.view(-1,96)
           
           # The gradients are set to zero,
+          optimizer.zero_grad()
           # the the gradient is computed and stored.
           # .step() performs parameter update
           loss.backward()
           optimizer.step()
-          optimizer.zero_grad()
           train_loss += loss.item()
         training_plot.append(train_loss/len(trainloader))
         with torch.no_grad():
@@ -85,7 +85,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_s
                 for p in model.parameters():#model.dec1.weight:
                     p.clamp_(min = 0)
             if non_negative == "bases":
-                for p in model.dec1.weight:
+                for p in model.dec1.parameters():
                     p.clamp_(min = 0)
             model.eval()        
             inputs  = x_test_tensor
@@ -111,6 +111,11 @@ def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_s
                     print('Best epoch found: nº {}'.format(best_epoch))
                     print('Exiting. . .')
                     break
+
+    signatures = model.dec1.weight.data 
+    signatures = pd.DataFrame(signatures.numpy())
+    exposures_train = model.enc1.weight.data@x_train.T if non_negative == "all" else (model.enc1.weight.data@x_train.T).clip(lower = 0)
+    exposures_test = model.enc1.weight.data@x_test.T if non_negative == "all" else (model.enc1.weight.data@x_test.T).clip(lower = 0)
     if do_plot:
         #matplotlib.use('Agg')
         plt.figure(figsize=(16,12))
@@ -126,4 +131,5 @@ def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_s
     if not ES:
         best_model = model  
         last_score = validation_plot[-1]  
-    return(best_model, last_score.item(), training_plot[-1])
+            #model, val_error, train_error, signatures, exposures_train, exposures_test
+    return (best_model, last_score.item(), training_plot[-1], signatures, exposures_train, exposures_test)

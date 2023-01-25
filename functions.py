@@ -297,6 +297,9 @@ def cosine_HA(est_set, ref_set):
     #in B, where the rows in sim represent the rows in A and the columns in sim 
     #represent the rows in B.
     sim = 1 - sp.distance.cdist(est_set, ref_set, 'cosine')
+    if np.any(np.isinf(sim) | np.isnan(sim)):
+      print("Houston we have a problem")
+      print(sim)
     _, col_ind  = linear_sum_assignment(-sim.T)
     return((sim.T[:,col_ind]).T, col_ind)
 

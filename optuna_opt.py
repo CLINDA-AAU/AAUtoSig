@@ -1,4 +1,5 @@
 #from tabnanny import verbose
+from math import radians
 from tabnanny import verbose
 import numpy as np
 import torch
@@ -8,19 +9,21 @@ optuna.logging.set_verbosity(optuna.logging.WARNING)
 
 from sklearn import model_selection
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
-from functions import simulate_counts
+from sklearn.decomposition import NMF
+
 
 
 
 #takes a data matrix nX96 and returns a dictionary of optimal hyperparameters
-def optuna_tune(X, nsig, criterion):
+def optuna_tune(X, criterion, epochs, relu_activation , nsig = None):
 
-    def objective(trial):
-        #nsig = trial.suggest_int('nsig', 2, 15)
+    def objective(trial, nsig = nsig):
+        if not nsig:
+            nsig = trial.suggest_int('nsig', 2, 15)
         batch_size = trial.suggest_categorical('batch_size', [16, 32, 64])
         lr = trial.suggest_float('lr',1e-8, 1e-1, log=True)
         
-        model = AAUtoSig(96, nsig)
+        model = AAUtoSig(96, nsig, relu_activation = relu_activation)
         optimizer = torch.optim.Adam(model.parameters(), lr = lr)
         #if optimizer_alg == "Tuned":
         #  optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
@@ -33,8 +36,8 @@ def optuna_tune(X, nsig, criterion):
         for train, test in kf.split(X):
             x_train = pd.DataFrame(X).iloc[train,:]
             x_test = pd.DataFrame(X).iloc[test,:] 
-            _, err, _ = train_AAUtoSig(
-                            epochs = 500, 
+            _, err, _,_,_,_ = train_AAUtoSig(
+                            epochs = epochs, 
                             model = model, 
                             x_train = x_train, 
                             x_test = x_test,
@@ -63,10 +66,49 @@ def optuna_tune(X, nsig, criterion):
     
     study = optuna.create_study(direction="minimize")
     
-    study.optimize(objective, n_trials=10, timeout=600) 
+    study.optimize(objective, n_trials=15, timeout=600) 
     trial = study.best_trial
 
     return trial.params
+
+def optuna_NMF(X, epochs):
+
+    def MSE_NMF(X, nsig):
+        model = NMF(n_components = nsig, init='random', max_iter = epochs, solver = 'mu')
+        kf = model_selection.KFold()
+
+        out_err = []
+        for train, test in kf.split(X):
+            x_train = pd.DataFrame(X).iloc[train,:]
+            x_test = pd.DataFrame(X).iloc[test,:]
+            exposures = model.fit_transform(x_train)
+            signatures = model.components_
+
+            ref_exposures = model.transform(X = x_test)
+            rec = np.dot(ref_exposures, signatures)
+
+            MSE = np.mean(((x_test - rec)**2).to_numpy())
+            out_err.append(MSE)
+
+        return(np.mean(out_err))
+    def objective(trial):
+        nsig = trial.suggest_int('nsig', 2, 15)
+        res = MSE_NMF(X, nsig)
+        
+        # Handle pruning based on the intermediate value.
+        if trial.should_prune():
+            raise optuna.exceptions.TrialPruned()
+
+        return np.mean(res)
+
+
+    study = optuna.create_study(direction="minimize")
+    study.optimize(objective, n_trials=15, timeout=600, n_jobs=3)
+
+    trial = study.best_trial
+
+    res = trial.params
+    return res['nsig']
 '''
 nsigs = 5
 
