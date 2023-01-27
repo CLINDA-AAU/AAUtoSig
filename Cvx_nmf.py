@@ -5,35 +5,47 @@ import matplotlib.pyplot as plt
 from AAUtoSig_init import AAUtoSig, train_AAUtoSig
 import torch
 from sklearn.decomposition import NMF
-# ---------------------- CONVEX NMF algorithm -------------------------
-def convex_nmf(X, rank, iter):
-    
-    n = X.shape[1]
-    '''
-    kmeans = KMeans(n_clusters=rank).fit(X.T)
+from functions import simulate_counts
 
-    #The Kmeans labeling does not make sense when X is used the observations as rows
-    print(kmeans.labels_)
-    H = pd.get_dummies(kmeans.labels_) #n*k
-    n_vec = H.sum(axis = 0)
-    G = H + 0.2*np.ones((n, rank)) #n*k
-    W = G@np.diag(1/np.array(n_vec)) #n*k  
-    W = W.to_numpy()
-    G = G.to_numpy()
-    '''
-    W = np.random.rand(6, rank)
-    G = np.random.rand(6,rank)
+# ---------------------- CONVEX NMF algorithm -------------------------
+def convex_nmf(X, rank, iter, init = "random"):
+    loss = np.zeros(iter)
+    n,p = X.shape
+    if init == "kmeans":
+        kmeans = KMeans(n_clusters=rank).fit(X.T)
+
+        #The Kmeans labeling does not make sense when X is used the observations as rows
+        H = pd.get_dummies(kmeans.labels_) #p*k
+        n_vec = H.sum(axis = 0)
+        G = H + 0.2*np.ones((p, rank)) #p*k
+        W = G@np.diag(1/np.array(n_vec)) #p*k  
+        W = W.to_numpy()
+        G = G.to_numpy()
+    if init == "random":
+        # estimation matrices the size of the feature space of the data matrix
+        W = np.random.rand(p, rank)
+        G = np.random.rand(p, rank)
     XtX = X.T@X
 
-    for _ in range(iter):
+    for i in range(iter):
         XtXW = XtX@W
         XtXG = XtX@G
         GWtXtXW = G@W.T@XtXW
         XtXWGtG = XtXW@G.T@G
-        G = G * np.sqrt(XtXW/GWtXtXW)
-        W = W * np.sqrt(XtXG/XtXWGtG)
+        G = G * np.sqrt(np.divide(XtXW,GWtXtXW))
+        W = W * np.sqrt(np.divide(XtXG,XtXWGtG))
+        loss[i] = np.sum(((X - X@W@G.T)**2))
+    plt.plot(list(range(iter)), loss)
+
+    plt.show()
     return(G, W)
 
+X,_,_ = simulate_counts(7, 400)
+print(X.shape)
+
+G, W = convex_nmf((X.T).to_numpy(), 7, iter = 5, init = "kmeans")
+
+'''
 fig1, axs1 = plt.subplots(3,2, width_ratios = [4,1])
 for i,n in enumerate([10, 50, 100]):
 
@@ -96,7 +108,7 @@ for i,n in enumerate([10, 50, 100]):
     axs1[2,0].set_xlabel("Patients")
     axs1[2,1].set_xlabel("Mutation type")
 plt.show()
-'''
+
 
 fig1, axs1 = plt.subplots(3,2, width_ratios = [4,1])
 n = 50
