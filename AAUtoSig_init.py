@@ -79,7 +79,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_s
           loss.backward()
           optimizer.step()
           train_loss += loss.item()
-        training_plot.append(train_loss/len(trainloader))
+        training_plot.append(train_loss)#/len(trainloader))
         with torch.no_grad():
             if non_negative == "all":
                 for p in model.parameters():#model.dec1.weight:
@@ -121,7 +121,7 @@ def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_s
         plt.figure(figsize=(16,12))
         plt.subplot(3, 1, 1)
         plt.title('_lr:' + str(np.round(lr, 5)))
-        plt.plot(list(range(len(training_plot))), validation_plot, label='Validation loss')
+        #plt.plot(list(range(len(training_plot))), validation_plot, label='Validation loss')
         plt.plot(list(range(len(training_plot))), training_plot, label='Train loss')
         plt.legend()
         plt.show()
