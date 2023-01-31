@@ -2,10 +2,6 @@ import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
-from AAUtoSig_init import AAUtoSig, train_AAUtoSig
-import torch
-from sklearn.decomposition import NMF
-from functions import simulate_counts
 
 # ---------------------- CONVEX NMF algorithm -------------------------
 def convex_nmf(X, rank, iter, init = "random"):
@@ -40,12 +36,13 @@ def convex_nmf(X, rank, iter, init = "random"):
     plt.show()
     return(G, W)
 
+'''
 X,_,_ = simulate_counts(7, 400)
 print(X.shape)
 
 G, W = convex_nmf((X.T).to_numpy(), 7, iter = 5, init = "kmeans")
 
-'''
+
 fig1, axs1 = plt.subplots(3,2, width_ratios = [4,1])
 for i,n in enumerate([10, 50, 100]):
 

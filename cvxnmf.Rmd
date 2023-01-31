@@ -1,0 +1,385 @@
+---
+title: "Cvx NMF"
+author: "Ida Egendal"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Convex NMF vs. AE vs. NMF
+This notbook will investigate deconvolutions performances of NMF, cvx nmf and the autoencoder on a small example
+
+```{python}
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
+import matplotlib
+import matplotlib.pyplot as plt
+#from AAUtoSig_init import AAUtoSig, train_AAUtoSig
+import torch
+import torch.nn.functional as F
+from datetime import date
+from sklearn.decomposition import NMF
+from Cvx_nmf import convex_nmf
+```
+
+
+```{python}
+class AAUtoSig(torch.nn.Module):
+    def __init__(self, feature_dim, latent_dim):
+    
+        super().__init__()
+                # Building an linear encoder
+        # 96 => dim
+        self.enc1 = torch.nn.Linear(feature_dim, latent_dim, bias = False)
+          
+        # Building an linear decoder 
+        # dim ==> 96
+        self.dec1 = torch.nn.Linear(latent_dim, feature_dim, bias = False)
+            
+
+    def forward(self, x):
+        x = self.enc1(x)
+        x = self.dec1(x)
+        return x
+        
+    # Model Initialization
+                                  
+def train_AAUtoSig(epochs, model, x_train, x_test, criterion, optimizer, batch_size, do_plot=True, i = None):
+    if i is None:
+        i = str(date.today())
+    x_train_tensor = torch.tensor(x_train.values, 
+                              dtype = torch.float32)
+    x_test_tensor = torch.tensor(x_test.values, 
+                                 dtype = torch.float32)
+    
+    trainloader = torch.utils.data.DataLoader(x_train_tensor, 
+                                              batch_size=batch_size, 
+                                              shuffle=True)
+
+    
+    outputs = []
+    training_plot=[]
+    validation_plot=[]
+    for epoch in range(epochs):
+        train_loss = 0.0       
+        model.train()
+        for data in trainloader:
+          # Output of Autoencoder
+          reconstructed = model(data)#.view(-1,96)
+          loss = criterion(reconstructed, data)#.view(-1,96)
+          
+          # The gradients are set to zero,
+          optimizer.zero_grad()
+          # the the gradient is computed and stored.
+          # .step() performs parameter update
+          loss.backward()
+          optimizer.step()
+          train_loss += loss.item()
+        training_plot.append(train_loss)#/len(trainloader))
+        with torch.no_grad():
+            for p in model.parameters():#model.dec1.weight:
+                p.clamp_(min = 0)
+            model.eval()        
+            inputs  = x_test_tensor
+            outputs = model(inputs)
+
+            valid_loss = criterion(outputs, inputs)#.view(-1,96)
+
+        
+            validation_plot.append(valid_loss)
+        #Patient early stopping - thanks to Elixir  
+    signatures = model.dec1.weight.data 
+    signatures = pd.DataFrame(signatures.numpy())
+    exposures_train = model.enc1.weight.data@x_train.T
+    exposures_test = model.enc1.weight.data@x_test.T 
+    if do_plot:
+        #matplotlib.use('Agg')
+        plt.figure(figsize=(16,6))
+        plt.subplot(3, 1, 1)
+        #plt.title('_lr:' + str(np.round(lr, 5)))
+        #plt.plot(list(range(len(training_plot))), validation_plot, label='Validation loss')
+        plt.plot(list(range(len(training_plot))), training_plot, label='Train loss')
+        plt.legend()
+        plt.show()
+        #plt.savefig(i + "_lr:" + str(np.round(lr, 5))+  "val_curve.png", transparent=True)
+        plt.clf()
+        
+    best_model = model  
+    last_score = validation_plot[-1]  
+            #model, val_error, train_error, signatures, exposures_train, exposures_test
+    return (best_model, last_score.item(), training_plot[-1], signatures, exposures_train, exposures_test)
+
+```
+
+## Data initialization
+
+We generate the data from two signatures with 6 mutation types. One flat and one not flat
+
+We generate 3 types of patients: one with predominantly sig1, one with predominantly sig2 and one that is a 50/50 mix. We create 50 patients in each group
+
+```{python}
+n = 50
+
+signature1 = np.ones(6)/6
+signature2 = np.array([0]*3 + [2]*3)/6
+
+matplotlib.rcParams['figure.figsize'] = [5,4]
+plt.plot(list(range(6)), signature1, '-o', color = 'forestgreen', label = "signature 1")
+plt.plot(list(range(6)), signature2, '-o', color = 'lightgreen', label = "signature 2")
+
+plt.legend()
+plt.show()
+
+total_n = 4*n
+exposures = np.array([18,2]*n + [10,10]*n + [2,18]*n).reshape(total_n,2)
+XMat1 = np.random.poisson(18*signature1 + 2*signature2, size = (n,6))
+XMat2 = np.random.poisson(10*signature1 + 10*signature2, size = (n,6))
+XMat3 = np.random.poisson(2*signature1 + 18*signature2, size = (n,6))
+XMat = np.concatenate((XMat1, XMat2, XMat3))
+```
+
+## CVX NMF
+
+We generate the siganture and exposure matrix using cvx nmf. In Ding et al. they consider a datamatrix with features as rows (same as Pei), which made sense with the Kmeans implementation. 
+We implement it with observations as row, making is comparable to the estimation from the autoencoder. This also means that the Kmeans initialization does not make sense.
+$$V = XGW  = FW$$
+
+```{python}
+def est_cvx(X, rank, n_iter, reverse = False):
+    G_cvx, W_cvx = convex_nmf(X, rank, n_iter, init = "kmeans")
+    if reverse:
+         signatures_cvx = X@W_cvx
+         diagonals_cvx = signatures_cvx.sum(axis = 0)
+         signatures_cvx = (signatures_cvx@np.diag(1/diagonals_cvx)).T
+         exposures_cvx = (np.diag(diagonals_cvx)@G_cvx.T).T
+  
+    if not reverse:
+        exposures_cvx = X@W_cvx
+        signatures_cvx = G_cvx
+        diagonals_cvx = signatures_cvx.sum(axis = 0)
+        exposures_cvx = exposures_cvx@np.diag(diagonals_cvx)
+        signatures_cvx = np.diag(1/diagonals_cvx)@(G_cvx.T)
+    
+    return(exposures_cvx, signatures_cvx, W_cvx)
+```
+
+## AE NMF
+
+Signatures and exposures are extracted using the AE with ReLU + PG nn. and hyperparameters set after my gut feeling 
+
+```{python}
+def est_AE(X, rank, n_iter, reverse = False):
+    n, p = X.shape
+    model_AE = AAUtoSig(feature_dim = p, latent_dim = rank)
+
+    optimizer = torch.optim.Adam(params=model_AE.parameters(), lr=1e-3)
+    criterion = torch.nn.MSELoss(reduction='sum')
+
+    X_pd = pd.DataFrame(X)
+    _,_,_,signatures_AE, exposures_AE,_ = train_AAUtoSig(epochs = n_iter, model = model_AE, x_train = X_pd, x_test = X_pd, criterion = criterion, optimizer = optimizer, batch_size = 8, do_plot = True)
+
+    if not reverse:
+        diagonals_AE = signatures_AE.sum(axis = 0)
+        exposures_AE = (exposures_AE.T@np.diag(diagonals_AE)).to_numpy()
+        signatures_AE = (np.diag(1/diagonals_AE)@(signatures_AE.T)).to_numpy()
+        
+
+    if reverse:
+        exposures_AE = model_AE.dec1.weight.data.numpy()
+        signatures_AE = X@((model_AE.enc1.weight.data).numpy()).T
+        signatures_AE = np.maximum(signatures_AE,0)
+    
+        diagonals_AE = signatures_AE.sum(axis = 0)
+
+        exposures_AE = (np.diag(diagonals_AE)@exposures_AE.T).T
+        signatures_AE = (signatures_AE@np.diag(1/diagonals_AE)).T
+    W = (model_AE.enc1.weight.data.numpy()).T
+    return(exposures_AE, signatures_AE, W)
+```
+
+## NMF
+
+NMF with multiplicative updates
+
+```{python}
+def est_nmf(X, rank, n_iter):
+    model_NMF = NMF(n_components=rank, solver='mu', beta_loss = 2, max_iter=n_iter, init="random")
+    exposures_NMF = model_NMF.fit_transform(X)
+    signatures_NMF = model_NMF.components_
+
+    diagonals_NMF = signatures_NMF.sum(axis = 1)
+    exposures_NMF = exposures_NMF@np.diag(diagonals_NMF)
+    signatures_NMF = np.diag(1/diagonals_NMF)@signatures_NMF
+    return(exposures_NMF, signatures_NMF)
+```
+
+## Plot results
+We plot the true and estimated signatures and exposures for each method.
+In this case is W is sig-shaped
+
+```{python}
+n_iter = 500
+names = ["NMF", "Cvx NMF", "AE"]
+matplotlib.rcParams['figure.figsize'] = [16, 6]
+
+exposures_cvx, signatures_cvx, W_cvx = est_cvx(XMat, 2, n_iter,reverse = False)
+exposures_AE, signatures_AE, W_AE = est_AE(XMat, 2, n_iter,reverse = False)
+exposures_NMF, signatures_NMF = est_nmf(XMat, 2, n_iter) 
+
+matplotlib.rcParams['figure.figsize'] = [20, 25]
+fig1, axs1 = plt.subplots(3,2, width_ratios = [4,1])
+for i, est in enumerate(((exposures_NMF, signatures_NMF), (exposures_cvx, signatures_cvx), (exposures_AE, signatures_AE))):
+    exp, sig = est
+    print(sig)
+    axs1[i,0].plot(list(range(total_n)), exposures[:,0], '-o', color = "forestgreen", label = "signature 1")
+    axs1[i,0].plot(list(range(total_n)), exposures[:,1], '-o', color = "lightgreen", label = "signature 2")
+    axs1[i,0].plot(list(range(total_n)), exp[:,0], '-o', color = "blue", label = "estimated")
+    axs1[i,0].plot(list(range(total_n)), exp[:,1], '-o', color = "navy", label = "estimated")
+
+    axs1[i,0].set_title(names[i])
+    axs1[i,0].set_ylabel("Exposures")
+
+
+    axs1[i,1].plot(list(range(6)), signature1, '-o', color = "forestgreen", label = "signature 1")
+    axs1[i,1].plot(list(range(6)), signature2, '-o', color = "lightgreen", label = "signature 2")
+
+    axs1[i,1].plot(list(range(6)), sig[0,:], '-o', color = "blue", label = "estimated")
+    axs1[i,1].plot(list(range(6)), sig[1,:], '-o', color = "navy" , label = "estimated")
+    if i != 0:
+        axs1[i,1].set_title(names[i])
+    axs1[i,1].set_ylabel("Signature itensity")
+
+    axs1[0,0].set_title("Exposures \n" +  names[0])
+    axs1[0,1].set_title("Signatures\n" + names[0])
+    axs1[0,1].legend()
+
+    axs1[i,0].set_xlabel("Patients")
+    axs1[i,1].set_xlabel("Mutation type")
+
+plt.show()
+```
+
+
+
+
+Now now with the reversed data matrix (and more params)
+
+```{python}
+n_iter = 500
+names = ["NMF", "Cvx NMF", "AE"]
+matplotlib.rcParams['figure.figsize'] = [16, 6]
+
+exposures_cvx, signatures_cvx, _ = est_cvx(XMat.T, 2, n_iter, reverse = True)
+exposures_AE, signatures_AE,_ = est_AE(XMat.T, 2, n_iter, reverse = True)
+exposures_NMF, signatures_NMF = est_nmf(XMat, 2, n_iter) 
+
+matplotlib.rcParams['figure.figsize'] = [20, 25]
+fig1, axs1 = plt.subplots(3,2, width_ratios = [4,1])
+for i, est in enumerate(((exposures_NMF, signatures_NMF), (exposures_cvx, signatures_cvx), (exposures_AE, signatures_AE))):
+    exp, sig = est
+    axs1[i,0].plot(list(range(total_n)), exposures[:,0], '-o', color = "forestgreen", label = "signature 1")
+    axs1[i,0].plot(list(range(total_n)), exposures[:,1], '-o', color = "lightgreen", label = "signature 2")
+
+    axs1[i,0].plot(list(range(total_n)), exp[:,0], '-o', color = "blue", label = "estimated")
+    axs1[i,0].plot(list(range(total_n)), exp[:,1], '-o', color = "navy", label = "estimated")
+
+    axs1[i,0].set_title(names[i])
+    axs1[i,0].set_ylabel("Exposures")
+
+
+    axs1[i,1].plot(list(range(6)), signature1, '-o', color = "forestgreen", label = "signature 1")
+    axs1[i,1].plot(list(range(6)), signature2, '-o', color = "lightgreen", label = "signature 2")
+
+    axs1[i,1].plot(list(range(6)), sig[0,:], '-o', color = "blue", label = "estimated")
+    axs1[i,1].plot(list(range(6)), sig[1,:], '-o', color = "navy" , label = "estimated")
+
+    if i != 0:
+        axs1[i,1].set_title(names[i])
+    axs1[i,1].set_ylabel("Signature itensity")
+
+    axs1[0,0].set_title("Exposures \n" +  names[0])
+    axs1[0,1].set_title("Signatures\n" + names[0])
+    axs1[0,1].legend()
+
+    axs1[i,0].set_xlabel("Patients")
+    axs1[i,1].set_xlabel("Mutation type")
+
+plt.show()
+```
+
+## More plots
+This is a plot of the estimated Cvx NMF and AE signatures and exposures for different numbers of patients
+
+```{python}
+exposures_cvx_dict = dict()
+exposures_AE_dict = dict()
+
+exposures_cvx_dict = dict()
+exposures_AE_dict = dict()
+
+signatures_cvx_dict = dict()
+signatures_AE_dict = dict()
+matplotlib.rcParams['figure.figsize'] = [16, 6]
+for n in [10, 50, 100]:
+    total_n = 4*n
+    XMat1 = np.random.poisson(18*signature1 + 2*signature2, size = (n,6))
+    XMat2 = np.random.poisson(10*signature1 + 10*signature2, size = (n,6))
+    XMat3 = np.random.poisson(2*signature1 + 18*signature2, size = (n,6))
+    XMat = np.concatenate((XMat1, XMat2, XMat3))
+    # ------------------------ Extraction ---------------------------------
+
+    exposures_cvx, signatures_cvx,_ = est_cvx(XMat, 2, n_iter, reverse = False)
+    exposures_AE, signatures_AE,_ = est_AE(XMat, 2, n_iter, reverse = False)
+
+    exposures_cvx_dict[str(n)] = exposures_cvx
+    exposures_AE_dict[str(n)] = exposures_AE
+    
+    signatures_cvx_dict[str(n)] = signatures_cvx
+    signatures_AE_dict[str(n)] = signatures_AE
+
+matplotlib.rcParams['figure.figsize'] = [20, 25]
+fig2, axs2 = plt.subplots(3,2, width_ratios = [4,1])
+for i,n in enumerate([10, 50, 100]):
+    total_n = 3*n
+    exposures = np.array([18,2]*n + [10,10]*n + [2,18]*n).reshape(total_n,2)
+    # --------------------------- Plot results --------------------------------
+    axs2[i,0].plot(list(range(total_n)), exposures[:,0], '-o', color = "forestgreen", label = "True")
+    axs2[i,0].plot(list(range(total_n)), exposures[:,1], '-o', color = "lightgreen", label = "True")
+
+    axs2[i,0].plot(list(range(total_n)), exposures_cvx_dict[str(n)][:,0], '-o', color = "blue", label = "Cvx NMF")
+    axs2[i,0].plot(list(range(total_n)), exposures_cvx_dict[str(n)][:,1], '-o', color = "navy", label = "Cvx NMF")
+
+    axs2[i,0].plot(list(range(total_n)), exposures_AE_dict[str(n)][:,0], '-o', color = "red", label = "AE")
+    axs2[i,0].plot(list(range(total_n)), exposures_AE_dict[str(n)][:,1], '-o', color = "lightcoral", label = "AE")
+
+    axs2[i,0].set_title('n = ' + str(total_n))
+    axs2[i,0].set_ylabel("Exposures")
+
+    axs2[i,1].plot(list(range(6)), signature1, '-o', color = "forestgreen", label = "True")
+    axs2[i,1].plot(list(range(6)), signature2, '-o', color = "lightgreen", label = "True")
+
+    axs2[i,1].plot(list(range(6)), signatures_cvx_dict[str(n)][0,:], '-o', color = "blue", label = "Cvx NMF")
+    axs2[i,1].plot(list(range(6)), signatures_cvx_dict[str(n)][1,:], '-o', color = "navy" , label = "Cvx NMF")
+    
+    axs2[i,1].plot(list(range(6)), signatures_AE_dict[str(n)][0,:], '-o', color = "red", label = "AE")
+    axs2[i,1].plot(list(range(6)), signatures_AE_dict[str(n)][1,:], '-o', color = "lightcoral",label = "AE")
+    axs2[i,1].set_title('n = ' + str(total_n))
+    axs2[i,1].set_ylabel("Signature intensity")
+
+    if i == 0:
+        axs2[0,0].set_title("Exposures \n n= " +  str(total_n))
+        axs2[0,1].set_title("Signatures\n n= " +  str(total_n))
+        axs2[0,1].legend()
+
+    axs2[2,0].set_xlabel("Patients")
+    axs2[2,1].set_xlabel("Mutation type")
+plt.show()
+```
+
+
+
+
