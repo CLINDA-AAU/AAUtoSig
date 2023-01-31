@@ -1,0 +1,275 @@
+---
+title: "Cvx NMF SFS"
+author: "Ida Egendal"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Convex NMF vs. AE vs. NMF
+This notbook will investigate deconvolutions performances of NMF, cvx nmf and the autoencoder on a small example
+
+```{python}
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
+import matplotlib
+import matplotlib.pyplot as plt
+from AAUtoSig_init import AAUtoSig, train_AAUtoSig
+import torch
+import torch.nn.functional as F
+from datetime import date
+from sklearn.decomposition import NMF
+from Cvx_nmf import convex_nmf
+```
+
+
+## CVX NMF
+
+We generate the siganture and exposure matrix using cvx nmf. In Ding et al. they consider a datamatrix with features as rows (same as Pei), which made sense with the Kmeans implementation. 
+We implement it with observations as row, making is comparable to the estimation from the autoencoder. This also means that the Kmeans initialization does not make sense.
+$$V = XGW  = FW$$
+
+```{python}
+def est_cvx(X, rank, n_iter, reverse = False):
+    G_cvx, W_cvx = convex_nmf(X, rank, n_iter, init = "kmeans")
+    if reverse:
+         signatures_cvx = X@W_cvx
+         diagonals_cvx = signatures_cvx.sum(axis = 0)
+         signatures_cvx = (signatures_cvx@np.diag(1/diagonals_cvx)).T
+         exposures_cvx = (np.diag(diagonals_cvx)@G_cvx.T).T
+  
+    if not reverse:
+        exposures_cvx = X@W_cvx
+        signatures_cvx = G_cvx
+        diagonals_cvx = signatures_cvx.sum(axis = 0)
+        exposures_cvx = exposures_cvx@np.diag(diagonals_cvx)
+        signatures_cvx = np.diag(1/diagonals_cvx)@(G_cvx.T)
+    
+    return(exposures_cvx, signatures_cvx, W_cvx)
+```
+
+## AE NMF
+
+Signatures and exposures are extracted using the AE with ReLU + PG nn. and hyperparameters set after my gut feeling 
+
+```{python}
+def est_AE(X, rank, n_iter, reverse = False):
+    n, p = X.shape
+    model_AE = AAUtoSig(feature_dim = p, latent_dim = rank)
+
+    optimizer = torch.optim.Adam(params=model_AE.parameters(), lr=1e-3)
+    criterion = torch.nn.MSELoss(reduction='sum')
+
+    X_pd = pd.DataFrame(X)
+    _,_,_,signatures_AE, exposures_AE,_ = train_AAUtoSig(epochs = n_iter, model = model_AE, x_train = X_pd, x_test = X_pd, criterion = criterion, optimizer = optimizer, batch_size = 8, do_plot = True)
+
+    if not reverse:
+        diagonals_AE = signatures_AE.sum(axis = 0)
+        exposures_AE = (exposures_AE.T@np.diag(diagonals_AE)).to_numpy()
+        signatures_AE = (np.diag(1/diagonals_AE)@(signatures_AE.T)).to_numpy()
+        
+
+    if reverse:
+        exposures_AE = model_AE.dec1.weight.data.numpy()
+        signatures_AE = X@((model_AE.enc1.weight.data).numpy()).T
+        signatures_AE = np.maximum(signatures_AE,0)
+    
+        diagonals_AE = signatures_AE.sum(axis = 0)
+
+        exposures_AE = (np.diag(diagonals_AE)@exposures_AE.T).T
+        signatures_AE = (signatures_AE@np.diag(1/diagonals_AE)).T
+    W = (model_AE.enc1.weight.data.numpy()).T
+    return(exposures_AE, signatures_AE, W)
+```
+
+## NMF
+
+NMF with multiplicative updates
+
+```{python}
+def est_nmf(X, rank, n_iter):
+    model_NMF = NMF(n_components=rank, solver='mu', beta_loss = 2, max_iter=n_iter, init="random")
+    exposures_NMF = model_NMF.fit_transform(X)
+    signatures_NMF = model_NMF.components_
+
+    diagonals_NMF = signatures_NMF.sum(axis = 1)
+    exposures_NMF = exposures_NMF@np.diag(diagonals_NMF)
+    signatures_NMF = np.diag(1/diagonals_NMF)@signatures_NMF
+    return(exposures_NMF, signatures_NMF)
+```
+
+
+## Load Data
+To invesitgate the SFS of NMF and convex NMF we look at 'real' mutational data. The increase in parameters will increase the non-uniqueness.
+
+
+```{python}
+PCAWG = pd.read_csv(r'Q:\AUH-HAEM-FORSK-MutSigDLBCL222\external_data\Alexandrov_2020_synapse\WGS_PCAWG_2018_02_09\WGS_PCAWG.96.csv')
+PCAWG.index = [t[0] + '[' + m + ']' + t[2] for (t,m) in zip(PCAWG['Trinucleotide'], PCAWG['Mutation type'])]
+PCAWG = PCAWG.drop(['Trinucleotide', 'Mutation type'], axis = 1)
+
+cancers_PCAWG = [c.split('::')[0] for c in PCAWG.columns]
+idx = [c  == "Ovary-AdenoCA" for c in cancers_PCAWG]
+count_ovary = PCAWG.iloc[:,idx]
+Patient_ID = [c.split('::')[1] for c in count_ovary.columns]
+
+count_ovary = count_ovary.T.to_numpy()
+```
+
+
+## Extractions
+In cvx nmf and ae, we consider the formulation:
+$$V = XGW  = FW$$
+and for NMF:
+$$V = HW $$
+
+Now, we extract W and G in CVX NMF and AE and H and W in NMF:
+
+```{python}
+n_iter = 600
+exp_nmf, sig_nmf = est_nmf(count_ovary, rank  = 3, n_iter = n_iter)
+exp_cvx, sig_cvx, W_cvx = est_cvx(count_ovary, rank  = 3, reverse = False, n_iter = n_iter)
+exp_ae, sig_ae, W_ae = est_AE(count_ovary, rank  = 3, reverse = False, n_iter = n_iter)
+
+```
+
+
+
+```{r SFS1}
+library(devtools)
+library(ggplot2)
+
+library(SFS)
+library(reticulate)
+
+V = as.matrix(py$count_ovary, ncol = 96)
+total_n = nrow(V)
+
+rownames(V) = py$Patient_ID
+
+sigs_cvx = as.matrix(py$sig_cvx)
+W_cvx = as.matrix(py$W_cvx)
+
+dev1 = sampleSFS(P=W_cvx, E = sigs_cvx, maxIter = 10^5, beta = 0.5, check = 1000)
+prob.min = dev1$Eminimum
+prob.max = dev1$Emaximum
+
+# Converting into right data frame
+sig = rep(c(1:3), dev1$totalIter)
+mut <- c("C > A","C > G","C > T","T > A","T > C","T > G")
+sub = rep(mut, each = 16)
+colnames(V) = sub
+V = t(V)
+
+dat1 = data.frame(m = factor(rownames(V), levels=unique(rownames(V))), sub = sub, S = t(prob.min))
+datmin = reshape(dat1, varying = colnames(dat1)[-c(1,2)], direction = "long", v.names = "min")
+dat1 = data.frame(m = factor(rownames(V), levels=unique(rownames(V))),S = t(prob.max))
+datmax = reshape(dat1, varying = colnames(dat1)[-1], direction = "long", v.names = "max")
+data2 = merge(datmin,datmax, by = c("m","time","id"))
+data2$time = factor(data2$time)
+data2$xval = rep(1:96,3)
+
+equal_breaks <- function(n = 3, s = 0.05, ...){
+  function(x){
+    # rescaling
+    d <- s * diff(range(x)) / (1+2*s)
+    seq(min(x)+d, max(x)-d, length=n)
+  }
+}
+
+g1 = ggplot(data2) + geom_bar(aes(x = xval, y = max), stat = "identity", width = 0.78, fill = "tomato2")+
+  geom_bar(aes(x = xval, y = min), stat = "identity")+
+  facet_grid(rows = vars(time), cols = vars(sub), scales = "free", switch = "x")+theme_bw()+
+  theme(text = element_text(size=12, face = "bold"), axis.text.x=element_blank(),axis.text.y = element_text(size = 8),axis.ticks = element_blank(), 
+        legend.position = "none",strip.text.y.right = element_text(angle = 0, size = 15), panel.spacing.x = unit(0,"line"),
+        strip.background.x = element_rect(color="black", fill="white",linetype="blank"),
+        strip.text.x = element_text(size = 9))+ 
+  ylab("Probability")+xlab("Mutation types")+ggtitle("Signatures")+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), breaks=equal_breaks(n=3, s=0.2), 
+                     expand = c(0.05, 0))
+g1
+
+
+```
+
+```{r SFS2}
+sigs_nmf = as.matrix(py$sig_nmf)
+exp_nmf = as.matrix(py$exp_nmf)
+
+dev1 = sampleSFS(P=exp_nmf, E = sigs_nmf, maxIter = 10^5, beta = 0.5, check = 1000)
+prob.min = dev1$Eminimum
+prob.max = dev1$Emaximum
+
+# Converting into right data frame
+sig = rep(c(1:3), dev1$totalIter)
+mut <- c("C > A","C > G","C > T","T > A","T > C","T > G")
+sub = rep(mut, each = 16)
+
+dat1 = data.frame(m = factor(rownames(V), levels=unique(rownames(V))), sub = sub, S = t(prob.min))
+datmin = reshape(dat1, varying = colnames(dat1)[-c(1,2)], direction = "long", v.names = "min")
+dat1 = data.frame(m = factor(rownames(V), levels=unique(rownames(V))),S = t(prob.max))
+datmax = reshape(dat1, varying = colnames(dat1)[-1], direction = "long", v.names = "max")
+data2 = merge(datmin,datmax, by = c("m","time","id"))
+data2$time = factor(data2$time)
+data2$xval = rep(1:96,3)
+
+equal_breaks <- function(n = 3, s = 0.05, ...){
+  function(x){
+    # rescaling
+    d <- s * diff(range(x)) / (1+2*s)
+    seq(min(x)+d, max(x)-d, length=n)
+  }
+}
+
+g1 = ggplot(data2) + geom_bar(aes(x = xval, y = max), stat = "identity", width = 0.78, fill = "tomato2")+
+  geom_bar(aes(x = xval, y = min), stat = "identity")+
+  facet_grid(rows = vars(time), cols = vars(sub), scales = "free", switch = "x")+theme_bw()+
+  theme(text = element_text(size=12, face = "bold"), axis.text.x=element_blank(),axis.text.y = element_text(size = 8),axis.ticks = element_blank(), 
+        legend.position = "none",strip.text.y.right = element_text(angle = 0, size = 15), panel.spacing.x = unit(0,"line"),
+        strip.background.x = element_rect(color="black", fill="white",linetype="blank"),
+        strip.text.x = element_text(size = 9))+ 
+  ylab("Probability")+xlab("Mutation types")+ggtitle("Signatures")+
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), breaks=equal_breaks(n=3, s=0.2), 
+                     expand = c(0.05, 0))
+g1
+
+
+```
+
+```{r SFS}
+sigs_NMF = as.matrix(py$sig_nmf)
+exposures_NMF = as.matrix(py$exp_nmf)
+
+sfs_result = sampleSFS(exposures_NMF,sigs_NMF) 
+res = samplesToSVD(Presults = sfs_result$P_lastCheckResults, Eresults = sfs_result$E_lastCheckResults, N = 3)
+
+dat.T = data.frame(x = res$E.points[,1], y = -res$E.points[,2])  # Choose PE.points or ET.points
+
+#### PLOT 
+ggplot(dat.T, aes(x = x, y = y))+
+  geom_point(size = 0.2, col = c(rep("darkgrey", nrow(dat.T)-500), rep("black",500)), shape = 3)+
+  labs(x = expression(alpha[1]), y = expression(alpha[2]))+
+  theme_bw()
+
+
+
+sigs_AE = as.matrix(py$sig_ae)
+W_AE = as.matrix(py$W_ae)
+
+sfs_result = sampleSFS(W_AE,sigs_AE) 
+res = samplesToSVD(Presults = sfs_result$P_lastCheckResults, Eresults = sfs_result$E_lastCheckResults, N = 3)
+
+dat.T = data.frame(x = res$E.points[,1], y = -res$E.points[,2])  # Choose PE.points or ET.points
+
+#### PLOT 
+ggplot(dat.T, aes(x = x, y = y))+
+  geom_point(size = 0.2, col = c(rep("darkgrey", nrow(dat.T)-500), rep("black",500)), shape = 3)+
+  labs(x = expression(alpha[1]), y = expression(alpha[2]))+
+  theme_bw()
+
+
+```
